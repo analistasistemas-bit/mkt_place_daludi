@@ -46,8 +46,8 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Se tem user mas tá na tela de login, redireciona
-    if (user && request.nextUrl.pathname.startsWith("/login")) {
+    // Se tem user mas tá na tela de login ou na raiz, redireciona
+    if (user && (request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname === "/")) {
         const url = request.nextUrl.clone()
         url.pathname = "/dashboard"
         return NextResponse.redirect(url)
