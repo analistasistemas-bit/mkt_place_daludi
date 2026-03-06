@@ -26,6 +26,35 @@ def product_import_handler(
     """
     # Importa origem de enfileiramento para rastreabilidade
     queue_origin = "rq.worker.products.import"
+
+    if supabase is None:
+        supabase = get_supabase_admin_client()
+
+    if job_id is None:
+        # Compatibilidade com jobs antigos enfileirados sem job_id: tenta recuperar
+        # o job de importação mais recente pendente do tenant.
+        try:
+            pending_jobs = (
+                supabase.table("jobs")
+                .select("id")
+                .eq("tenant_id", tenant_id)
+                .eq("job_type", "product.import")
+                .eq("status", "pending")
+                .order("created_at", desc=True)
+                .limit(2)
+                .execute()
+            )
+
+            candidates = pending_jobs.data or []
+            if len(candidates) == 1:
+                job_id = candidates[0]["id"]
+            elif len(candidates) > 1:
+                logger.warning(
+                    "Mais de um job de importação pendente para o tenant; mantendo sem lifecycle."
+                )
+        except Exception:
+            logger.exception("Falha ao tentar recuperar job_id pendente por fallback.")
+
     if job_id is None:
         logger.warning(
             "job_id não informado no enfileiramento; fluxo seguirá sem lifecycle de jobs no banco."
@@ -36,9 +65,6 @@ def product_import_handler(
         f"tenant_id={tenant_id}, job_id={job_id}, origem={queue_origin}, "
         f"qtde={1 if isinstance(file_url_or_gtins, list) else 'manual'}"
     )
-
-    if supabase is None:
-        supabase = get_supabase_admin_client()
 
     # Suporta chamada com lista de GTINs, caminho de arquivo ou payload legado.
     gtins_importados: List[str]

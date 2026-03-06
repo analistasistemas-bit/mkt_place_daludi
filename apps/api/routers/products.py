@@ -101,12 +101,14 @@ async def import_products(
     # Enfileirar processamento assíncrono no RQ
     settings = get_settings()
     queue = Queue(connection=Redis.from_url(settings.redis_url))
+    job_id_str = str(job["id"])
+
+    # Garantir que o ID do job sempre viaje em formato string para o worker.
     queue.enqueue(
         "apps.worker.jobs.import_job.product_import_handler",
         gtins,
-        job_id=job["id"],
-        tenant_id=str(tenant_id),
-        supabase=None,
+        str(tenant_id),
+        job_id_str,
     )
 
     return {
