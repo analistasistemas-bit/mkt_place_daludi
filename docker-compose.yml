@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  # ── API FastAPI ────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mktplace-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    command: >
+      uvicorn apps.api.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    networks:
+      - mktplace-net
+
+  # ── Worker RQ ──────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: mktplace-worker
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    command: >
+      python -m rq worker
+      --url redis://redis:6379/0
+      default high low
+    networks:
+      - mktplace-net
+
+  # ── Redis ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: mktplace-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - mktplace-net
+
+volumes:
+  redis-data:
+
+networks:
+  mktplace-net:
+    driver: bridge

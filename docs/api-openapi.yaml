@@ -1,0 +1,107 @@
+openapi: 3.0.3
+info:
+  title: Daludi Marketplace AI Core API
+  description: FastAPI orchestration endpoints for the AI marketplace listing ecosystem. Assumes HTTP Bearer (Supabase JWT) and Tenant resolution.
+  version: 1.0.0
+
+servers:
+  - url: https://api.daludi.com
+    description: Production Environment
+  - url: http://localhost:8000
+    description: Development
+
+components:
+  securitySchemes:
+    JWTBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Use o access_token retirado de sua sessão do Supabase Auth.
+  schemas:
+    ListingDraft:
+      type: object
+      properties:
+        id:
+          type: string
+        product_id:
+          type: string
+        status:
+          type: string
+          enum: [generating, ready, pending_review, published, error]
+        title:
+          type: string
+        price:
+          type: number
+        attributes:
+          type: object
+    ProductResolved:
+      type: object
+      properties:
+        id:
+          type: string
+        gtin:
+          type: string
+        status:
+          type: string
+          enum: [imported, resolving, resolved, needs_review, blocked]
+        confidence:
+          type: number
+
+security:
+  - JWTBearer: []
+
+paths:
+  /auth/login:
+    post:
+      summary: Auth Gate Proxy
+      description: Interceptador local de Login se não usar Supabase JS Client direto.
+      responses:
+        '200':
+          description: OK
+  /products/import:
+    post:
+      summary: Import Product Identifiers (Batch)
+      description: Engatilha o Job de Processamento (`product.import`) no Worker MQ passando GTINs de Planilhas via POST.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                 items:
+                   type: array
+                   items:
+                      type: string
+      responses:
+        '202':
+          description: Accepted & Enqueued
+  /products:
+    get:
+      summary: Get user products
+      responses:
+        '200':
+          description: Array de ProductResolved com RLS habilitado (Apenas records do seu JWT tenant_id).
+  /jobs:
+    get:
+      summary: Retrieve Workers Background Events
+      responses:
+        '200':
+          description: OK (Retorna os rows da Job_Events baseada pelo RLS).
+  /listings/{id}/publish:
+    post:
+      summary: Concluir e Integrar a Listagem no ML Oficial.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Job Added to queue `listing.publish`. Wait for webhook or poll.
+  /discovery/opportunities:
+    get:
+      summary: Retorna leads mockados do Scan de Discovery de Mercado.
+      responses:
+         '200':
+           description: OK
