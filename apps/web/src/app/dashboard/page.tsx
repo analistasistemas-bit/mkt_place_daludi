@@ -13,13 +13,14 @@ import {
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { getPaginatedItems } from "@/lib/paginated-response"
 
 export default async function ProductsPage() {
     let products = []
 
     try {
         const res = await fetchApi("/products")
-        products = res.data || []
+        products = getPaginatedItems(res)
     } catch (error) {
         console.error(error)
     }
