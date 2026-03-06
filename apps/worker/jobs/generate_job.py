@@ -81,7 +81,7 @@ def listing_generate_handler(
         q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
         q.enqueue(
             "apps.worker.jobs.publish_job.listing_publish_handler",
-            listing_id,
+            listing_id=listing_id,
             job_id=job_id,
             tenant_id=tenant_id,
             supabase=None

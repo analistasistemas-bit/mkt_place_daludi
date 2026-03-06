@@ -107,8 +107,8 @@ async def import_products(
     queue.enqueue(
         "apps.worker.jobs.import_job.product_import_handler",
         gtins,
-        str(tenant_id),
-        job_id_str,
+        tenant_id=str(tenant_id),
+        job_id=job_id_str,
     )
 
     return {

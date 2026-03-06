@@ -130,7 +130,7 @@ def product_import_handler(
         q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
         q.enqueue(
             "apps.worker.jobs.resolve_job.product_resolve_handler",
-            p_id,
+            product_id=p_id,
             job_id=job_id,  # ou criar sub-job id
             tenant_id=tenant_id,
             supabase=None

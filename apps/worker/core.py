@@ -10,6 +10,7 @@ Implementa:
 
 import asyncio
 import functools
+import inspect
 import random
 import time
 from typing import Any, Callable, Dict, Literal, Optional, TypeVar
@@ -156,9 +157,27 @@ def handle_job_lifecycle():
         
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs) -> Any:
-            job_id = kwargs.get("job_id")
-            tenant_id = kwargs.get("tenant_id")
-            supabase = kwargs.get("supabase")
+            bound_args: dict[str, Any]
+            try:
+                signature = inspect.signature(func)
+                bound = signature.bind_partial(*args, **kwargs)
+                bound_args = bound.arguments
+            except Exception:
+                # Fallback defensivo: manter comportamento anterior em cenários não previstos
+                bound_args = kwargs
+
+            job_id = bound_args.get("job_id")
+            tenant_id = bound_args.get("tenant_id")
+            supabase = bound_args.get("supabase")
+
+            # Garante que os metadados sejam acessíveis para o handler também,
+            # independentemente de ter sido passado por posição ou por kwargs.
+            if "job_id" not in kwargs and job_id is not None:
+                kwargs["job_id"] = job_id
+            if "tenant_id" not in kwargs and tenant_id is not None:
+                kwargs["tenant_id"] = tenant_id
+            if "supabase" not in kwargs and supabase is not None:
+                kwargs["supabase"] = supabase
 
             # Se não vier supabase pelo enqueue, cria com service role.
             if not supabase and job_id and tenant_id:

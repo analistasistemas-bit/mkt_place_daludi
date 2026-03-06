@@ -70,7 +70,7 @@ def product_resolve_handler(
         q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
         q.enqueue(
             "apps.worker.jobs.generate_job.listing_generate_handler",
-            product_id,
+            product_id=product_id,
             job_id=job_id,
             tenant_id=tenant_id,
             supabase=None
