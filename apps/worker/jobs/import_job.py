@@ -56,8 +56,7 @@ def product_import_handler(
             ins = supabase.table("products").insert({
                 "tenant_id": tenant_id,
                 "gtin": gtin,
-                "status": "imported", 
-                "source": "import_job"
+                "status": "pending"
             }).execute()
             p_id = ins.data[0]["id"]
         
