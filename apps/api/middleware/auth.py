@@ -39,8 +39,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         path = request.url.path
 
-        # Liberar rotas públicas
-        if path in PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc"):
+        # Liberar rotas públicas e requests OPTIONS (CORS preflight)
+        if request.method == "OPTIONS" or path in PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc"):
             return await call_next(request)
 
         # Verificar presença do header Authorization

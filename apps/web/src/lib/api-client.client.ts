@@ -9,12 +9,25 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://mkt-place-dalud
  */
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+    let { data: { session } } = await supabase.auth.getSession()
+
+    // Fallback: se não houver sessão no getSession, tenta getUser (mais lento mas garante refresh)
+    if (!session) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+            // Se o user existir mas a sessão do getSession falhou, tentamos pegar a sessão de novo
+            const { data: { session: refreshedSession } } = await supabase.auth.getSession()
+            session = refreshedSession
+        }
+    }
 
     const headers = new Headers(options.headers || {})
 
     if (session?.access_token) {
+        console.log("FetchAPI (Client): Token JWT encontrado e incluído no header.")
         headers.set("Authorization", `Bearer ${session.access_token}`)
+    } else {
+        console.warn("FetchAPI (Client): Nenhuma sessão ativa encontrada. Request será enviado sem token.")
     }
 
     if (!headers.has("Content-Type")) {
