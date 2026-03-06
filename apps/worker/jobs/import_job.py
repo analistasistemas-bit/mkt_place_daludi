@@ -15,8 +15,8 @@ logger = get_logger("job.import_job")
 @handle_job_lifecycle()
 def product_import_handler(
     file_url_or_gtins: Any,
-    job_id: str | None = None,
     tenant_id: str,
+    job_id: str | None = None,
     supabase: Any = None
 ) -> Dict[str, Any]:
     """
