@@ -29,17 +29,19 @@ SOURCE_WEIGHTS = {
     "gs1": 1.0,         # Fonte oficial, máxima confiança
     "cnp": 0.9,         # Cadastro nacional
     "verified": 0.85,   # Verificação manual
+    "openfoodfacts": 0.7,# DB aberto
     "mercadolivre": 0.6, # Scraping ML
     "google": 0.5,       # Google enrichment
     "manual": 0.4,       # Entrada manual
     "stub": 0.3,         # Dados stub
+    "fallback": 0.2,     # Fallback local
 }
 
 # Threshold de status
 CONFIDENCE_THRESHOLDS = {
     "resolved": 0.7,      # >= 0.7: resolvido
-    "needs_review": 0.4,  # >= 0.4: precisa revisão
-    # < 0.4: bloqueado
+    "needs_review": 0.1,  # >= 0.1: precisa revisão
+    # < 0.1: bloqueado
 }
 
 

@@ -8,6 +8,7 @@ from apps.worker.core import with_retry, handle_job_lifecycle
 from apps.api.deps import get_supabase_admin_client
 from apps.api.services.normalizer import get_normalizer
 from apps.api.services.identity_resolver import get_identity_resolver
+from apps.api.services.product_fetch_service import get_product_fetch_service
 from packages.shared.logging import get_logger
 
 logger = get_logger("job.resolve_job")
@@ -55,19 +56,44 @@ def product_resolve_handler(
     # 1. Obter normalizer e identity
     normalizer = get_normalizer()
     resolver = get_identity_resolver()
+    fetch_service = get_product_fetch_service()
     
-    # 2. Mock de dados GS1 se precisar enriquecer product_data original
+    # 2. Buscar dados reais (Cascading Resolver)
+    gtin = product_data.get("gtin")
+    sources = []
+    
+    if gtin:
+        logger.info(f"Buscando dados reais via cascading resolver para GTIN {gtin}...")
+        lookup_result = fetch_service.lookup_by_gtin(gtin)
+        sources.append({"source_type": lookup_result.source})
+        
+        if lookup_result.found:
+            for k, v in lookup_result.data.items():
+                # Atualizar campos vazios com os dados encontrados
+                if v and not product_data.get(k):
+                    product_data[k] = v
+    else:
+        sources.append({"source_type": "manual"})
+    
+    # 3. Normalizar
     normalized = normalizer.normalize_product(product_data)
     
-    ident = resolver.resolve_confidence(normalized, sources=[{"source_type": "stub"}])
+    # 4. Calcular confidence
+    ident = resolver.resolve_confidence(normalized, sources=sources)
     status = ident["status"]
     
     # 3. Salvar volta no supabase
-    supabase.table("products").update({
+    update_data = {
         "status": status,
         "confidence": ident["confidence"],
-        "attributes": normalized.get("attributes", {})
-    }).eq("id", product_id).execute()
+    }
+    
+    # Salvar os campos que foram enriquecidos pelo fetch service
+    for field in ["title", "brand", "category", "description", "images", "attributes"]:
+        if normalized.get(field):
+            update_data[field] = normalized[field]
+            
+    supabase.table("products").update(update_data).eq("id", product_id).execute()
     
     # 4. Enfileirar próxima etapa se ok
     if resolver.should_proceed_to_listing(ident):
