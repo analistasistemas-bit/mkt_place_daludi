@@ -79,7 +79,10 @@ def listing_generate_handler(
     assert generated_listing is not None
 
     # Como pipeline não inseriu no DB e sim retornou o objeto gerado, nós o inserimos/atualizamos
-    ins = supabase.table("listings").insert(generated_listing).execute()
+    listing_payload = dict(generated_listing)
+    listing_payload.pop("metadata", None)
+
+    ins = supabase.table("listings").insert(listing_payload).execute()
     listing_id = ins.data[0]["id"]
     
     # Se gerou ok e está ready, enfilera o publish.
