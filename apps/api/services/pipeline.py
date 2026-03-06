@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from apps.api.services.compliance_rules import ComplianceRules, get_compliance_rules
-from apps.api.services.gs1_service import GS1Service, get_gs1_service
+from apps.api.services.product_fetch_service import ProductFetchService, get_product_fetch_service
 from apps.api.services.identity_resolver import IdentityResolver, get_identity_resolver
 from apps.api.services.listing_builder import ListingBuilder, get_listing_builder
 from apps.api.services.llm_service import LLMService, get_llm_service
@@ -52,7 +52,7 @@ class Pipeline:
         self,
         normalizer: Optional[Normalizer] = None,
         identity_resolver: Optional[IdentityResolver] = None,
-        gs1_service: Optional[GS1Service] = None,
+        product_fetch_service: Optional[ProductFetchService] = None,
         ml_service: Optional[MLService] = None,
         pricing_service: Optional[PricingService] = None,
         template_renderer: Optional[TemplateRenderer] = None,
@@ -63,7 +63,7 @@ class Pipeline:
     ):
         self.normalizer = normalizer or get_normalizer()
         self.identity_resolver = identity_resolver or get_identity_resolver()
-        self.gs1_service = gs1_service or get_gs1_service()
+        self.product_fetch_service = product_fetch_service or get_product_fetch_service()
         self.ml_service = ml_service or get_ml_service()
         self.pricing_service = pricing_service or get_pricing_service()
         self.template_renderer = template_renderer or get_template_renderer()

@@ -5,7 +5,7 @@ Ordem obrigatória do pipeline: rules → templates → cache → vector reuse �
 """
 
 from apps.api.services.compliance_rules import ComplianceRules, get_compliance_rules
-from apps.api.services.gs1_service import GS1Service, get_gs1_service
+from apps.api.services.product_fetch_service import ProductFetchService, get_product_fetch_service
 from apps.api.services.identity_resolver import IdentityResolver, get_identity_resolver
 from apps.api.services.listing_builder import ListingBuilder, get_listing_builder
 from apps.api.services.llm_service import LLMService, get_llm_service
@@ -18,7 +18,7 @@ from apps.api.services.vector_service import VectorService, get_vector_service
 
 __all__ = [
     "ComplianceRules", "get_compliance_rules",
-    "GS1Service", "get_gs1_service",
+    "ProductFetchService", "get_product_fetch_service",
     "IdentityResolver", "get_identity_resolver",
     "ListingBuilder", "get_listing_builder",
     "LLMService", "get_llm_service",
