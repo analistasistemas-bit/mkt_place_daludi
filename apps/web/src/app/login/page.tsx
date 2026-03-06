@@ -10,7 +10,9 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+    const errorMsg = searchParams?.error ? "Email ou senha inválidos." : null
+
     return (
         <div className="flex h-screen w-full items-center justify-center p-4">
             <Card className="w-full max-w-sm">
@@ -21,7 +23,12 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form className="grid gap-4">
+                    <form className="grid gap-4" action={login}>
+                        {errorMsg && (
+                            <div className="text-sm font-medium text-destructive mb-2">
+                                {errorMsg}
+                            </div>
+                        )}
                         <div className="grid gap-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
@@ -38,7 +45,7 @@ export default function LoginPage() {
                             </div>
                             <Input id="password" name="password" type="password" required />
                         </div>
-                        <Button formAction={login} className="w-full" type="submit">
+                        <Button className="w-full" type="submit">
                             Entrar
                         </Button>
                     </form>
