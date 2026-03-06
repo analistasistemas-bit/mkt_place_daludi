@@ -11,7 +11,20 @@ from typing import Annotated, Any, Optional
 from fastapi import Depends, HTTPException, Request, status
 from supabase import Client, create_client
 
-from packages.shared.config import Settings, get_settings
+from packages.shared.config import get_settings
+
+
+def _normalize_supabase_key(value: str | None, field_name: str) -> str:
+    key = (value or "").strip()
+    if not key:
+        raise RuntimeError(f"{field_name} não configurada (valor vazio).")
+
+    if key.startswith("<") and key.endswith(">"):
+        raise RuntimeError(
+            f"{field_name} parece ser placeholder e não foi substituída ({key[:10]}...)."
+        )
+
+    return key
 
 
 # ============================================================
@@ -22,14 +35,22 @@ from packages.shared.config import Settings, get_settings
 def get_supabase_admin_client() -> Client:
     """Client Supabase com service_role_key (acesso admin, bypass RLS)."""
     settings = get_settings()
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    service_key = _normalize_supabase_key(
+        settings.supabase_service_role_key,
+        "SUPABASE_SERVICE_ROLE_KEY",
+    )
+    return create_client(settings.supabase_url, service_key)
 
 
 @lru_cache()
 def get_supabase_anon_client() -> Client:
     """Client Supabase com anon_key (respeita RLS)."""
     settings = get_settings()
-    return create_client(settings.supabase_url, settings.supabase_anon_key)
+    anon_key = _normalize_supabase_key(
+        settings.supabase_anon_key,
+        "SUPABASE_ANON_KEY",
+    )
+    return create_client(settings.supabase_url, anon_key)
 
 
 # ============================================================
