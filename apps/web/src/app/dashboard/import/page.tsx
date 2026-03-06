@@ -15,6 +15,7 @@ export default function ImportPage() {
 
     async function handleImport(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        const form = e.currentTarget
         const formData = new FormData(e.currentTarget)
         const rawGtins = formData.get("gtins") as string
         if (!rawGtins) return
@@ -37,8 +38,9 @@ export default function ImportPage() {
             console.log("Importação concluída com sucesso:", res)
             toast.success(`${gtins.length} GTINs enviados para processamento!`)
 
-            const form = e.currentTarget
-            form.reset()
+            if (form) {
+                form.reset()
+            }
 
         } catch (err: any) {
             console.error("Erro no handleImport:", err)
