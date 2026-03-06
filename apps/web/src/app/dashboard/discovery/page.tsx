@@ -1,6 +1,6 @@
 "use client"
 
-import { fetchApi } from "@/lib/api-client"
+import { fetchApi } from "@/lib/api-client.client"
 import { useEffect, useState } from "react"
 import {
     Table,

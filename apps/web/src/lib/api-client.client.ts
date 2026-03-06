@@ -1,16 +1,14 @@
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@/utils/supabase/client"
 
 // API Backend Base URL fallback
-const API_BASE_URL = process.env.API_URL || "http://localhost:8000"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 /**
- * Cliente seguro de API do FastAPI. 
- * Executa APENAS sob Server Components / Server Actions porque usa os cookies Next.js
- * Injeta o JWT do Supabase para que a API consiga fazer o RLS via auth_middleware.
+ * Cliente seguro de API do FastAPI para CLIENT COMPONENTS
+ * Usa o cliente Supabase Browser que funciona sem next/headers
  */
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
-    // Pega client do Supabase que lê cookies do Next context
-    const supabase = await createClient()
+    const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     const headers = new Headers(options.headers || {})
@@ -19,8 +17,6 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
         headers.set("Authorization", `Bearer ${session.access_token}`)
     }
 
-    // Como as rotas fastapi na config necessitam de um X-Tenant-Id (via auth middleware/ou fallback jwt)
-    // Adiciona header genérico app JSON se não fornecido
     if (!headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json")
     }
@@ -31,9 +27,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     })
 
     if (!response.ok) {
-        // Tratar/lançar erros estruturados se a API rejeitar
         const errorBody = await response.text()
-        console.error(`FetchAPI error [${response.status}]: ${errorBody}`)
+        console.error(`FetchAPI (Client) error [${response.status}]: ${errorBody}`)
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
     }
 
