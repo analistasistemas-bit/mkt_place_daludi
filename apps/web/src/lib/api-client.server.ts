@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 
 // API Backend Base URL fallback
-const API_BASE_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "https://mkt-place-daludi.onrender.com"
 
 /**
  * Cliente seguro de API do FastAPI para SERVER COMPONENTS
