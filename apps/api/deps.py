@@ -54,7 +54,7 @@ async def get_current_user(request: Request) -> dict[str, Any]:
     try:
         settings = get_settings()
         
-        # Delegar validação do token ao Supabase via Auth Client admin
+        # Delegar validação do token ao Supabase via Auth Client admin (v2)
         # Isso é necessário para suportar chaves de assinatura assimétricas ou rotacionadas
         supabase = get_supabase_admin_client()
         user_response = supabase.auth.get_user(token)
