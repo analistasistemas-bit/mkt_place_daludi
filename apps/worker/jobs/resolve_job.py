@@ -64,7 +64,8 @@ def product_resolve_handler(
     
     if gtin:
         logger.info(f"Buscando dados reais via cascading resolver para GTIN {gtin}...")
-        lookup_result = fetch_service.lookup_by_gtin(gtin)
+        import asyncio
+        lookup_result = asyncio.run(fetch_service.lookup_by_gtin(gtin))
         sources.append({"source_type": lookup_result.source})
         
         if lookup_result.found:
