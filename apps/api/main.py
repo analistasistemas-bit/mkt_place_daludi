@@ -91,7 +91,7 @@ def create_app() -> FastAPI:
             "http://localhost:8000",
             "https://mkt-place-daludi.vercel.app",
         ],
-        allow_origins_regex=r"https://.*\.vercel\.app",  # Permite preview URLs
+        allow_origin_regex=r"https://.*\.vercel\.app",  # Permite preview URLs
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
