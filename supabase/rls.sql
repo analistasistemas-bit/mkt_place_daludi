@@ -263,20 +263,20 @@ ALTER TABLE caches ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "caches_select_own_tenant"
     ON caches FOR SELECT
-    USING (tenant_id = auth.tenant_id());
+    USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY "caches_insert_own_tenant"
     ON caches FOR INSERT
-    WITH CHECK (tenant_id = auth.tenant_id());
+    WITH CHECK (tenant_id = public.get_tenant_id());
 
 CREATE POLICY "caches_update_own_tenant"
     ON caches FOR UPDATE
-    USING (tenant_id = auth.tenant_id())
-    WITH CHECK (tenant_id = auth.tenant_id());
+    USING (tenant_id = public.get_tenant_id())
+    WITH CHECK (tenant_id = public.get_tenant_id());
 
 CREATE POLICY "caches_delete_own_tenant"
     ON caches FOR DELETE
-    USING (tenant_id = auth.tenant_id());
+    USING (tenant_id = public.get_tenant_id());
 
 -- ============================================================
 -- OPPORTUNITIES
@@ -285,17 +285,17 @@ ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "opportunities_select_own_tenant"
     ON opportunities FOR SELECT
-    USING (tenant_id = auth.tenant_id());
+    USING (tenant_id = public.get_tenant_id());
 
 CREATE POLICY "opportunities_insert_own_tenant"
     ON opportunities FOR INSERT
-    WITH CHECK (tenant_id = auth.tenant_id());
+    WITH CHECK (tenant_id = public.get_tenant_id());
 
 CREATE POLICY "opportunities_update_own_tenant"
     ON opportunities FOR UPDATE
-    USING (tenant_id = auth.tenant_id())
-    WITH CHECK (tenant_id = auth.tenant_id());
+    USING (tenant_id = public.get_tenant_id())
+    WITH CHECK (tenant_id = public.get_tenant_id());
 
 CREATE POLICY "opportunities_delete_own_tenant"
     ON opportunities FOR DELETE
-    USING (tenant_id = auth.tenant_id());
+    USING (tenant_id = public.get_tenant_id());
