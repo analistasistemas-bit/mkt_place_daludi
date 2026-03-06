@@ -5,6 +5,7 @@ Job para Publicação no ML (`listing.publish`)
 from typing import Any, Dict
 
 from apps.worker.core import with_retry, handle_job_lifecycle
+from apps.api.deps import get_supabase_admin_client
 from apps.api.services.ml_service import get_ml_service
 from packages.shared.logging import get_logger
 
@@ -17,7 +18,7 @@ def listing_publish_handler(
     listing_id: str,
     job_id: str,
     tenant_id: str,
-    supabase: Any
+    supabase: Any = None
 ) -> Dict[str, Any]:
     """
     1. Verifica status no BD
@@ -25,6 +26,9 @@ def listing_publish_handler(
     3. Atualiza banco como `published` se ok.
     """
     logger.info(f"Publicando listing {listing_id}")
+
+    if supabase is None:
+        supabase = get_supabase_admin_client()
     
     res = supabase.table("listings").select("*").eq("id", listing_id).eq("tenant_id", tenant_id).execute()
     if not res.data:

@@ -8,8 +8,11 @@ import uuid
 from typing import Any, Optional
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from redis import Redis
+from rq import Queue
 
 from apps.api.deps import CurrentUser, SupabaseAdmin, TenantId
+from packages.shared.config import get_settings
 from packages.shared.logging import get_logger
 from packages.shared.schemas import PaginatedResponse, ProductStatus
 
@@ -95,8 +98,16 @@ async def import_products(
         }},
     )
 
-    # TODO: Enfileirar job no RQ (Fase 4)
-    # queue.enqueue(process_product_import, job["id"])
+    # Enfileirar processamento assíncrono no RQ
+    settings = get_settings()
+    queue = Queue(connection=Redis.from_url(settings.redis_url))
+    queue.enqueue(
+        "apps.worker.jobs.import_job.product_import_handler",
+        gtins,
+        job_id=job["id"],
+        tenant_id=str(tenant_id),
+        supabase=None,
+    )
 
     return {
         "message": "Importação iniciada",

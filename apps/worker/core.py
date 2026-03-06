@@ -14,6 +14,7 @@ import random
 import time
 from typing import Any, Callable, Dict, Literal, Optional, TypeVar
 
+from apps.api.deps import get_supabase_admin_client
 from packages.shared.logging import get_logger
 
 logger = get_logger("worker.core")
@@ -165,6 +166,17 @@ def handle_job_lifecycle():
             job_id = kwargs.get("job_id")
             tenant_id = kwargs.get("tenant_id")
             supabase = kwargs.get("supabase")
+
+            # Se não vier supabase pelo enqueue, cria com service role.
+            if not supabase and job_id and tenant_id:
+                try:
+                    supabase = get_supabase_admin_client()
+                    kwargs["supabase"] = supabase
+                except Exception as e:
+                    logger.error(
+                        "Falha ao criar client admin do Supabase para lifecycle do job.",
+                        extra={"extra_data": {"job_id": job_id, "tenant_id": tenant_id, "error": str(e)}},
+                    )
             
             if not all([job_id, supabase, tenant_id]):
                 # Se não temos credenciais de banco no kwargs, apenas executa

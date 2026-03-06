@@ -5,6 +5,7 @@ Job para geração de anúncio (`listing.generate`)
 from typing import Any, Dict
 
 from apps.worker.core import with_retry, handle_job_lifecycle
+from apps.api.deps import get_supabase_admin_client
 from apps.api.services.pipeline import get_pipeline
 from packages.shared.logging import get_logger
 
@@ -17,7 +18,7 @@ def listing_generate_handler(
     product_id: str,
     job_id: str,
     tenant_id: str,
-    supabase: Any
+    supabase: Any = None
 ) -> Dict[str, Any]:
     """
     Executa Etapas 2-5 do Pipeline (Template, Pricing, Vector e AI).
@@ -25,6 +26,9 @@ def listing_generate_handler(
     - Salva na tabela listings.
     """
     logger.info(f"Gerando listing do produto {product_id}")
+
+    if supabase is None:
+        supabase = get_supabase_admin_client()
     
     res = supabase.table("products").select("*").eq("id", product_id).eq("tenant_id", tenant_id).execute()
     if not res.data:
@@ -76,7 +80,7 @@ def listing_generate_handler(
             listing_id,
             job_id=job_id,
             tenant_id=tenant_id,
-            supabase=supabase
+            supabase=None
         )
     else:
          logger.warning(f"Listing {listing_id} não enfileirado para publish (status={generated_listing.get('status')})")

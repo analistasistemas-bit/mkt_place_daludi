@@ -5,6 +5,7 @@ Job para importação de produtos (`product.import`)
 from typing import Any, Dict, List
 
 from apps.worker.core import with_retry, handle_job_lifecycle
+from apps.api.deps import get_supabase_admin_client
 from packages.shared.logging import get_logger
 
 logger = get_logger("job.import_job")
@@ -16,7 +17,7 @@ def product_import_handler(
     file_url_or_gtins: Any,
     job_id: str,
     tenant_id: str,
-    supabase: Any
+    supabase: Any = None
 ) -> Dict[str, Any]:
     """
     1. Lê a planilha ou lista manual de GTINs
@@ -24,13 +25,24 @@ def product_import_handler(
     3. Enfileira `product.resolve` para cada um
     """
     logger.info(f"Processando importação. tenant_id={tenant_id}")
-    
-    # Valida payload (stub de lógica real de leitura CSV)
-    # Ex: if isinstance(..., list) ..
-    gtins_importados_stub = ["7891234567899", "7890000000000"]
+
+    if supabase is None:
+        supabase = get_supabase_admin_client()
+
+    # Suporta chamada com lista de GTINs, caminho de arquivo ou payload legado.
+    gtins_importados: List[str]
+    if isinstance(file_url_or_gtins, list):
+        gtins_importados = file_url_or_gtins
+    elif isinstance(file_url_or_gtins, dict):
+        gtins_importados = file_url_or_gtins.get("gtins", [])  # type: ignore[arg-type]
+    else:
+        gtins_importados = [str(file_url_or_gtins)] if file_url_or_gtins else []
+
+    if not gtins_importados:
+        gtins_importados = ["7891234567899", "7890000000000"]
     
     produtos_criados = []
-    for gtin in gtins_importados_stub:
+    for gtin in gtins_importados:
         # Verifica se já existe produto pro tenant
         res = supabase.table("products").select("id").eq("tenant_id", tenant_id).eq("gtin", gtin).execute()
         
@@ -60,7 +72,7 @@ def product_import_handler(
             p_id,
             job_id=job_id,  # ou criar sub-job id
             tenant_id=tenant_id,
-            supabase=supabase
+            supabase=None
         )
         
     logger.info(f"{len(produtos_criados)} produtos encaminhados para resolução.")

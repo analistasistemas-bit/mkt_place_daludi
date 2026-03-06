@@ -5,6 +5,7 @@ Job de Discovery Scan (`discovery.scan`). (Stub MVP)
 from typing import Any, Dict
 
 from apps.worker.core import with_retry, handle_job_lifecycle
+from apps.api.deps import get_supabase_admin_client
 from packages.shared.logging import get_logger
 
 logger = get_logger("job.discovery_job")
@@ -15,13 +16,16 @@ logger = get_logger("job.discovery_job")
 def discovery_scan_handler(
     job_id: str,
     tenant_id: str,
-    supabase: Any
+    supabase: Any = None
 ) -> Dict[str, Any]:
     """
     Executa busca de oportunidades e atualiza a tabela `opportunities`.
     STUB no MVP.
     """
     logger.info("Executando stub de discovery.scan")
+
+    if supabase is None:
+        supabase = get_supabase_admin_client()
     
     # Criar 2 oportunidades pro tenant e inserir na tabela (stubbing)
     opps = [

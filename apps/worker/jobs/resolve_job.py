@@ -5,6 +5,7 @@ Job para resolução e normalização de Produto (`product.resolve`)
 from typing import Any, Dict
 
 from apps.worker.core import with_retry, handle_job_lifecycle
+from apps.api.deps import get_supabase_admin_client
 from apps.api.services.normalizer import get_normalizer
 from apps.api.services.identity_resolver import get_identity_resolver
 from packages.shared.logging import get_logger
@@ -18,13 +19,16 @@ def product_resolve_handler(
     product_id: str,
     job_id: str,
     tenant_id: str,
-    supabase: Any
+    supabase: Any = None
 ) -> Dict[str, Any]:
     """
     Executa a etapa 1 do Pipeline GTIN:
     Busca no Supabase -> GS1 -> Normaliza -> Calcula Confiança.
     """
     logger.info(f"Resolvendo produto {product_id}. tenant_id={tenant_id}")
+
+    if supabase is None:
+        supabase = get_supabase_admin_client()
     
     res = supabase.table("products").select("*").eq("id", product_id).eq("tenant_id", tenant_id).execute()
     if not res.data:
@@ -65,7 +69,7 @@ def product_resolve_handler(
             product_id,
             job_id=job_id,
             tenant_id=tenant_id,
-            supabase=supabase
+            supabase=None
         )
     else:
         logger.warning(f"Produto {product_id} bloqueado. Não segue para listing.generate.")
