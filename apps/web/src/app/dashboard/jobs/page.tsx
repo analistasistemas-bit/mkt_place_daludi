@@ -1,4 +1,7 @@
 import { fetchApi } from "@/lib/api-client.server"
+
+export const dynamic = 'force-dynamic'
+
 import {
     Table,
     TableBody,

@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import { useState } from "react"
 import { fetchApi } from "@/lib/api-client.client"
 import { Button } from "@/components/ui/button"
