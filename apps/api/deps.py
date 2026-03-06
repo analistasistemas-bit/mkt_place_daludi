@@ -10,6 +10,7 @@ from typing import Annotated, Any, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from supabase import Client, create_client
+from jose import JWTError, jwt
 
 from packages.shared.config import Settings, get_settings
 
@@ -53,20 +54,38 @@ async def get_current_user(request: Request) -> dict[str, Any]:
 
     try:
         settings = get_settings()
-        
-        # Delegar validação do token ao Supabase via Auth Client admin (v2)
-        # Isso é necessário para suportar chaves de assinatura assimétricas ou rotacionadas
-        supabase = get_supabase_admin_client()
-        user_response = supabase.auth.get_user(token)
+        secret = (settings.supabase_jwt_secret or "").strip()
+        if not secret:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="SUPABASE_JWT_SECRET não configurado",
+            )
 
-        if not user_response or not user_response.user:
+        # Validação local do JWT do Supabase Auth com o secret correto.
+        # Não usa SUPABASE_ANON_KEY nem SUPABASE_SERVICE_ROLE_KEY para assinatura.
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+        except JWTError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido ou expirado",
+                detail=f"Erro ao validar token: {str(e)}",
             )
-        
-        user_id = str(user_response.user.id)
-        email = user_response.user.email
+
+        user_id = str(payload.get("sub", "")).strip()
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido: sub não encontrado",
+            )
+
+        email = payload.get("email")
+        if not isinstance(email, str):
+            email = None
 
         # Buscar profile com tenant_id usando admin client
         supabase = get_supabase_admin_client()

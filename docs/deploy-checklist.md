@@ -2,6 +2,10 @@
 
 Este documento contém o passo a passo e todas as variáveis de ambiente necessárias para realizar o deploy manual na plataforma Render (backend/worker) e Vercel (frontend).
 
+Observação importante:
+- `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são usadas para chamadas de API do Supabase.
+- `SUPABASE_JWT_SECRET` é usada apenas para validar o JWT do usuário.
+
 ## 1. Render - API Web Service (`mktplace-api`)
 
 Crie um novo **Web Service** no Render com as seguintes configurações:
@@ -20,6 +24,7 @@ Crie um novo **Web Service** no Render com as seguintes configurações:
 |-------|-------|
 | `SUPABASE_URL` | `https://cuetfuxvxzlyhienpafc.supabase.co` |
 | `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1ZXRmdXh2eHpseWhpZW5wYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NTkyNjUsImV4cCI6MjA4ODMzNTI2NX0.fJ0OF9ABl86TvQ82jKTy3GwkOx-ROX23SWnZd-7nxhA` |
+| `SUPABASE_JWT_SECRET` | `<COLE_AQUI_O_JWT_SECRET_DO_SUPABASE>` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `<COLE_AQUI_A_SERVICE_ROLE_KEY_DO_SUPABASE>` |
 | `REDIS_URL` | `rediss://default:AbSbAAIncDJlMjdkMjAzYjU0NTU0MWFhYmI5MmEwZTYwMWM4MGViNnAyNDYyMzU@mutual-feline-46235.upstash.io:6379` |
 | `API_SECRET_KEY` | `production-secret-key-mktplace` |
@@ -55,6 +60,7 @@ Dê preferência para usar "Environment Groups" no Render e compartilhar variáv
 | Chave | Valor |
 |-------|-------|
 | `SUPABASE_URL` | `https://cuetfuxvxzlyhienpafc.supabase.co` |
+| `SUPABASE_JWT_SECRET` | `<COLE_AQUI_O_JWT_SECRET_DO_SUPABASE>` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `<COLE_AQUI_A_SERVICE_ROLE_KEY_DO_SUPABASE>` |
 | `REDIS_URL` | `rediss://default:AbSbAAIncDJlMjdkMjAzYjU0NTU0MWFhYmI5MmEwZTYwMWM4MGViNnAyNDYyMzU@mutual-feline-46235.upstash.io:6379` |
 | `ENVIRONMENT` | `production` |
