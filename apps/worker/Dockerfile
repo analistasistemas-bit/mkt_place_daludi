@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Comando de start
-CMD ["python", "-m", "rq", "worker", "--url", "${REDIS_URL:-redis://localhost:6379/0}", "default", "high", "low"]
+CMD ["python", "-m", "apps.worker.worker"]

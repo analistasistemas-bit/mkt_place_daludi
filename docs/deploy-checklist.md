@@ -51,7 +51,11 @@ Crie um novo **Web Service** (Plano Free) no Render com as seguintes configuraç
 - **Branch:** `main`
 - **Runtime:** `Python 3`
 - **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `python -m http.server $PORT & python -m rq worker --url $REDIS_URL default high low`
+- **Start Command:** `python -m http.server $PORT & python -m apps.worker.worker`
+
+Observação importante:
+- O entrypoint `apps.worker.worker` sobe o RQ Worker e também inicia uma thread de keep-alive.
+- Essa thread faz `GET https://mktplace-worker.onrender.com/` a cada 4 minutos para evitar o spin-down automático do plano Free durante o processamento de jobs longos.
 
 ### Variáveis de Ambiente (Environment)
 

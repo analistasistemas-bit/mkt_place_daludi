@@ -32,14 +32,15 @@ Sinta-se livre de utilizar **Render Managed Redis** (pago, atua dentro da VCN no
    - `REDIS_URL`
    - `ENVIRONMENT=production`
 
-**Serviço 2: Background Worker (RQ Worker)**
-1. Dashboard → New Background Worker.
+**Serviço 2: Web Service (RQ Worker no plano Free)**
+1. Dashboard → New Web Service.
 2. Vincular Repositório.
 3. **Build Command:** `pip install -r requirements.txt`
-4. **Start Command:** `python -m apps.worker.worker`
+4. **Start Command:** `python -m http.server $PORT & python -m apps.worker.worker`
 5. Environment Variables:
    - Duplique as mesmas do `Web Service`. Você precisará dos dados do banco para fazer insert.
    - Forneça os tokens stub do (Ex: OpenAI Key `LLM_API_KEY`, etc).
+6. O `apps.worker.worker` inicia uma thread de keep-alive que faz `GET https://mktplace-worker.onrender.com/` a cada 4 minutos para evitar o spin-down do plano gratuito durante jobs longos.
 
 ## 4. Vercel (Frontend Next.js App Router)
 Otimizado de nascença e deploy "One-Click".
