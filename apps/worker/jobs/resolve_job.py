@@ -2,6 +2,8 @@
 Job para resolução e normalização de Produto (`product.resolve`)
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict
 
 from apps.worker.core import with_retry, handle_job_lifecycle
@@ -12,6 +14,27 @@ from apps.api.services.product_fetch_service import get_product_fetch_service
 from packages.shared.logging import get_logger
 
 logger = get_logger("job.resolve_job")
+
+REPLACEABLE_TITLE_VALUES = {
+    "",
+    "Produto Sem Título Gerado",
+}
+
+
+def _should_replace_field(field: str, current_value: Any, new_value: Any) -> bool:
+    if new_value in (None, "", [], {}):
+        return False
+
+    if field == "title":
+        return (current_value or "").strip() in REPLACEABLE_TITLE_VALUES
+
+    if field in {"brand", "category", "description"}:
+        return not current_value
+
+    if field in {"attributes", "images"}:
+        return not current_value
+
+    return not current_value
 
 
 @with_retry(max_retries=3)
@@ -70,8 +93,7 @@ def product_resolve_handler(
         
         if lookup_result.found:
             for k, v in lookup_result.data.items():
-                # Atualizar campos vazios com os dados encontrados
-                if v and not product_data.get(k):
+                if _should_replace_field(k, product_data.get(k), v):
                     product_data[k] = v
     else:
         sources.append({"source_type": "manual"})

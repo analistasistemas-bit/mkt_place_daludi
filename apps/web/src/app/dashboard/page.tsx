@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getPaginatedItems } from "@/lib/paginated-response"
+import { getProductDisplayTitle } from "@/lib/product-display"
 
 export default async function ProductsPage() {
     let products = []
@@ -50,7 +51,7 @@ export default async function ProductsPage() {
                             products.map((p: any) => (
                                 <TableRow key={p.id}>
                                     <TableCell className="font-medium">{p.gtin}</TableCell>
-                                    <TableCell>{p.attributes?.name || p.id}</TableCell>
+                                    <TableCell>{getProductDisplayTitle(p)}</TableCell>
                                     <TableCell>
                                         <Badge variant={p.status === "resolved" ? "default" : "secondary"}>
                                             {p.status}

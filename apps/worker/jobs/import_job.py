@@ -2,6 +2,8 @@
 Job para importação de produtos (`product.import`)
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict, List
 
 from apps.worker.core import with_retry, handle_job_lifecycle

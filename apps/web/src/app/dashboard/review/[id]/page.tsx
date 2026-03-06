@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { ArrowLeft, CheckCircle } from "lucide-react"
+import { getProductReviewDraft } from "@/lib/product-display"
 
 export default function ReviewPage() {
     const { id } = useParams()
@@ -38,15 +39,8 @@ export default function ReviewPage() {
                 const res = await fetchApi(`/products/${id}`)
 
                 // Mock se listing real ainda não existir:
-                const attrs = res.attributes || {}
                 setProduct(res)
-                setDraft({
-                    title: attrs.name || "Produto Sem Título Gerado",
-                    price: attrs.price || "199.90",
-                    description: attrs.description || "Descrição em desenvolvimento pelo AI...",
-                    category: attrs.category || "MLB_BASE",
-                    images: attrs.images || ["https://via.placeholder.com/400?text=Sem+Foto"]
-                })
+                setDraft(getProductReviewDraft(res))
             } catch (e: any) {
                 toast.error("Erro ao carregar produto: " + e.message)
             } finally {

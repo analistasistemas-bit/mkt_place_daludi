@@ -2,6 +2,8 @@
 Job para geração de anúncio (`listing.generate`)
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict
 
 from apps.worker.core import with_retry, handle_job_lifecycle
