@@ -14,8 +14,8 @@ logger = get_logger("job.discovery_job")
 @with_retry(max_retries=1)
 @handle_job_lifecycle()
 def discovery_scan_handler(
-    job_id: str,
     tenant_id: str,
+    job_id: str | None = None,
     supabase: Any = None
 ) -> Dict[str, Any]:
     """
@@ -23,6 +23,10 @@ def discovery_scan_handler(
     STUB no MVP.
     """
     logger.info("Executando stub de discovery.scan")
+    if not job_id:
+        logger.warning(
+            f"discovery_scan_handler iniciado sem job_id para tenant_id={tenant_id}"
+        )
 
     if supabase is None:
         supabase = get_supabase_admin_client()

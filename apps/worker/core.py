@@ -28,30 +28,23 @@ def create_job_event(
     supabase_client: Any,
     job_id: str,
     tenant_id: str,
-    status: JobStatus,
+    event_type: str,
     message: str,
-    details: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Registra um evento de execução do job na tabela job_events."""
     try:
         supabase_client.table("job_events").insert({
             "job_id": job_id,
             "tenant_id": tenant_id,
-            "status": status,
+            "event_type": event_type,
             "message": message,
-            "details": details or {}
+            "metadata": metadata or {}
         }).execute()
-        
-        # Opcionalmente, atualizar a tabela jobs também
-        supabase_client.table("jobs").update({
-            "status": status,
-            "updated_at": "now()"
-        }).eq("id", job_id).execute()
-        
     except Exception as e:
         logger.error(
             f"Erro ao registrar job_event: {e}",
-            extra={"extra_data": {"job_id": job_id, "status": status}}
+            extra={"extra_data": {"job_id": job_id, "event_type": event_type}}
         )
 
 def update_job_status(
@@ -64,7 +57,7 @@ def update_job_status(
     try:
         data = {"status": status, "updated_at": "now()"}
         if error_message:
-            data["error_details"] = error_message
+            data["error"] = error_message
             if status == "failed":
                 data["completed_at"] = "now()"
         elif status == "completed":
@@ -181,23 +174,51 @@ def handle_job_lifecycle():
             if not all([job_id, supabase, tenant_id]):
                 # Se não temos credenciais de banco no kwargs, apenas executa
                 # É útil para quando não for injetado diretamente mas precisávamos do wrapper
+                logger.warning(
+                    "Lifecycle do job ignorado por ausência de metadados obrigatórios.",
+                    extra={
+                        "extra_data": {
+                            "handler": func.__name__,
+                            "job_id": job_id,
+                            "tenant_id": tenant_id,
+                        }
+                    },
+                )
                 return func(*args, **kwargs)
                 
             try:
                 update_job_status(supabase, job_id, "processing")
-                create_job_event(supabase, job_id, tenant_id, "processing", "Iniciando processamento do job.")
+                create_job_event(
+                    supabase,
+                    job_id,
+                    tenant_id,
+                    "started",
+                    "Iniciando processamento do job.",
+                )
                 
                 result = func(*args, **kwargs)
                 
                 update_job_status(supabase, job_id, "completed")
-                create_job_event(supabase, job_id, tenant_id, "completed", "Job finalizado com sucesso.")
+                create_job_event(
+                    supabase,
+                    job_id,
+                    tenant_id,
+                    "completed",
+                    "Job finalizado com sucesso.",
+                )
                 return result
                 
             except Exception as e:
                 # Trata DLQ
                 error_msg = str(e)
                 update_job_status(supabase, job_id, "failed", error_message=error_msg)
-                create_job_event(supabase, job_id, tenant_id, "failed", f"Falha fatal no job: {error_msg}")
+                create_job_event(
+                    supabase,
+                    job_id,
+                    tenant_id,
+                    "failed",
+                    f"Falha fatal no job: {error_msg}",
+                )
                 raise e
                 
         # omitimos o async_wrapper aqui por simplicidade, no worker do RQ os handlers costumam ser chamados

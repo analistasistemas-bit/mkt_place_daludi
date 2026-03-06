@@ -17,8 +17,8 @@ logger = get_logger("job.resolve_job")
 @handle_job_lifecycle()
 def product_resolve_handler(
     product_id: str,
-    job_id: str,
     tenant_id: str,
+    job_id: str | None = None,
     supabase: Any = None
 ) -> Dict[str, Any]:
     """
@@ -26,6 +26,10 @@ def product_resolve_handler(
     Busca no Supabase -> GS1 -> Normaliza -> Calcula Confiança.
     """
     logger.info(f"Resolvendo produto {product_id}. tenant_id={tenant_id}")
+    if not job_id:
+        logger.warning(
+            f"product_resolve_handler iniciado sem job_id para product_id={product_id}. tenant_id={tenant_id}"
+        )
 
     if supabase is None:
         supabase = get_supabase_admin_client()

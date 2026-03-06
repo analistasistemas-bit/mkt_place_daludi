@@ -24,10 +24,18 @@ def product_import_handler(
     2. Registra na tabela de products
     3. Enfileira `product.resolve` para cada um
     """
+    # Importa origem de enfileiramento para rastreabilidade
+    queue_origin = "rq.worker.products.import"
     if job_id is None:
-        logger.warning("job_id não informado no enfileiramento; fluxo seguirá sem lifecycle de jobs no banco.")
+        logger.warning(
+            "job_id não informado no enfileiramento; fluxo seguirá sem lifecycle de jobs no banco."
+        )
 
-    logger.info(f"Processando importação. tenant_id={tenant_id}, job_id={job_id}")
+    logger.info(
+        "Processando importação. "
+        f"tenant_id={tenant_id}, job_id={job_id}, origem={queue_origin}, "
+        f"qtde={1 if isinstance(file_url_or_gtins, list) else 'manual'}"
+    )
 
     if supabase is None:
         supabase = get_supabase_admin_client()
@@ -43,6 +51,31 @@ def product_import_handler(
 
     if not gtins_importados:
         gtins_importados = ["7891234567899", "7890000000000"]
+
+    if job_id is None:
+        logger.warning(
+            "Fallback sem lifecycle em import_job",
+            extra={
+                "extra_data": {
+                    "job_id": job_id,
+                    "tenant_id": tenant_id,
+                    "origin": queue_origin,
+                    "gtins": gtins_importados,
+                }
+            },
+        )
+    else:
+        logger.debug(
+            "Import job com lifecycle",  # mantido para trilha de diagnóstico
+            extra={
+                "extra_data": {
+                    "job_id": job_id,
+                    "tenant_id": tenant_id,
+                    "origin": queue_origin,
+                    "gtins": gtins_importados,
+                }
+            },
+        )
     
     produtos_criados = []
     for gtin in gtins_importados:
