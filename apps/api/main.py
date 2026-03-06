@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.middleware.auth import AuthMiddleware
@@ -46,7 +47,19 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Factory para criar a instância FastAPI."""
-    settings = get_settings()
+    try:
+        settings = get_settings()
+        setup_logging(level="INFO" if settings.is_production else "DEBUG")
+    except Exception as e:
+        # App de emergência se a configuração falhar
+        emergency_app = FastAPI(title="Marketplace SaaS API (DEGRADED)")
+        @emergency_app.get("/health")
+        async def health():
+            return {"status": "degraded", "detail": f"Configuration error: {str(e)}"}
+        @emergency_app.get("/")
+        async def root():
+            return {"message": f"API running in degraded mode: {str(e)}"}
+        return emergency_app
 
     app = FastAPI(
         title="Marketplace SaaS API",
@@ -61,11 +74,20 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger.error(f"Erro inesperado: {str(exc)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error", "error": str(exc)},
+        )
+
     # ── CORS ──────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
             "http://localhost:3000",
+            "http://localhost:3001",
             "http://localhost:8000",
             "https://mkt-place-daludi.vercel.app",
         ],
@@ -75,10 +97,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Custom Middleware (ordem importa: último adicionado = primeiro executado) ──
+    # ── Custom Middleware ──
     app.add_middleware(TenantMiddleware)
     app.add_middleware(AuthMiddleware)
-    app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
+    app.add_middleware(RateLimitMiddleware, max_requests=1000, window_seconds=60)
 
     # ── Routers ───────────────────────────────────────────────
     app.include_router(auth.router)
