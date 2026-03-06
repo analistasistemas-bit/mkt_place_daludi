@@ -16,6 +16,7 @@ logger = get_logger("job.import_job")
 def product_import_handler(
     file_url_or_gtins: Any,
     tenant_id: str,
+    lifecycle_job_id: str | None = None,
     job_id: str | None = None,
     supabase: Any = None
 ) -> Dict[str, Any]:
@@ -30,39 +31,20 @@ def product_import_handler(
     if supabase is None:
         supabase = get_supabase_admin_client()
 
-    if job_id is None:
-        # Compatibilidade com jobs antigos enfileirados sem job_id: tenta recuperar
-        # o job de importação mais recente pendente do tenant.
-        try:
-            pending_jobs = (
-                supabase.table("jobs")
-                .select("id")
-                .eq("tenant_id", tenant_id)
-                .eq("job_type", "product.import")
-                .eq("status", "pending")
-                .order("created_at", desc=True)
-                .limit(2)
-                .execute()
-            )
-
-            candidates = pending_jobs.data or []
-            if len(candidates) == 1:
-                job_id = candidates[0]["id"]
-            elif len(candidates) > 1:
-                logger.warning(
-                    "Mais de um job de importação pendente para o tenant; mantendo sem lifecycle."
-                )
-        except Exception:
-            logger.exception("Falha ao tentar recuperar job_id pendente por fallback.")
-
-    if job_id is None:
+    if lifecycle_job_id is None and job_id is not None:
+        lifecycle_job_id = job_id
         logger.warning(
-            "job_id não informado no enfileiramento; fluxo seguirá sem lifecycle de jobs no banco."
+            "Compatibilidade legada acionada: usando job_id como lifecycle_job_id no import_job."
+        )
+
+    if lifecycle_job_id is None:
+        logger.warning(
+            "lifecycle_job_id não informado no enfileiramento; fluxo seguirá sem lifecycle de jobs no banco."
         )
 
     logger.info(
         "Processando importação. "
-        f"tenant_id={tenant_id}, job_id={job_id}, origem={queue_origin}, "
+        f"tenant_id={tenant_id}, lifecycle_job_id={lifecycle_job_id}, origem={queue_origin}, "
         f"qtde={1 if isinstance(file_url_or_gtins, list) else 'manual'}"
     )
 
@@ -78,12 +60,12 @@ def product_import_handler(
     if not gtins_importados:
         gtins_importados = ["7891234567899", "7890000000000"]
 
-    if job_id is None:
+    if lifecycle_job_id is None:
         logger.warning(
             "Fallback sem lifecycle em import_job",
             extra={
                 "extra_data": {
-                    "job_id": job_id,
+                    "lifecycle_job_id": lifecycle_job_id,
                     "tenant_id": tenant_id,
                     "origin": queue_origin,
                     "gtins": gtins_importados,
@@ -95,7 +77,7 @@ def product_import_handler(
             "Import job com lifecycle",  # mantido para trilha de diagnóstico
             extra={
                 "extra_data": {
-                    "job_id": job_id,
+                    "lifecycle_job_id": lifecycle_job_id,
                     "tenant_id": tenant_id,
                     "origin": queue_origin,
                     "gtins": gtins_importados,
@@ -130,10 +112,13 @@ def product_import_handler(
         q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
         q.enqueue(
             "apps.worker.jobs.resolve_job.product_resolve_handler",
-            product_id=p_id,
-            job_id=job_id,  # ou criar sub-job id
-            tenant_id=tenant_id,
-            supabase=None
+            args=(),
+            kwargs={
+                "product_id": p_id,
+                "tenant_id": tenant_id,
+                "lifecycle_job_id": lifecycle_job_id,
+                "supabase": None,
+            },
         )
         
     logger.info(f"{len(produtos_criados)} produtos encaminhados para resolução.")

@@ -18,6 +18,7 @@ logger = get_logger("job.resolve_job")
 def product_resolve_handler(
     product_id: str,
     tenant_id: str,
+    lifecycle_job_id: str | None = None,
     job_id: str | None = None,
     supabase: Any = None
 ) -> Dict[str, Any]:
@@ -26,9 +27,15 @@ def product_resolve_handler(
     Busca no Supabase -> GS1 -> Normaliza -> Calcula Confiança.
     """
     logger.info(f"Resolvendo produto {product_id}. tenant_id={tenant_id}")
-    if not job_id:
+    if lifecycle_job_id is None and job_id is not None:
+        lifecycle_job_id = job_id
         logger.warning(
-            f"product_resolve_handler iniciado sem job_id para product_id={product_id}. tenant_id={tenant_id}"
+            f"Compatibilidade legada acionada: usando job_id como lifecycle_job_id no resolve_job para product_id={product_id}."
+        )
+
+    if not lifecycle_job_id:
+        logger.warning(
+            f"product_resolve_handler iniciado sem lifecycle_job_id para product_id={product_id}. tenant_id={tenant_id}"
         )
 
     if supabase is None:
@@ -70,10 +77,13 @@ def product_resolve_handler(
         q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
         q.enqueue(
             "apps.worker.jobs.generate_job.listing_generate_handler",
-            product_id=product_id,
-            job_id=job_id,
-            tenant_id=tenant_id,
-            supabase=None
+            args=(),
+            kwargs={
+                "product_id": product_id,
+                "tenant_id": tenant_id,
+                "lifecycle_job_id": lifecycle_job_id,
+                "supabase": None,
+            },
         )
     else:
         logger.warning(f"Produto {product_id} bloqueado. Não segue para listing.generate.")

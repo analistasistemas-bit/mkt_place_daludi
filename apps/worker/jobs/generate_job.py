@@ -17,6 +17,7 @@ logger = get_logger("job.generate_job")
 def listing_generate_handler(
     product_id: str,
     tenant_id: str,
+    lifecycle_job_id: str | None = None,
     job_id: str | None = None,
     supabase: Any = None
 ) -> Dict[str, Any]:
@@ -26,9 +27,15 @@ def listing_generate_handler(
     - Salva na tabela listings.
     """
     logger.info(f"Gerando listing do produto {product_id}")
-    if not job_id:
+    if lifecycle_job_id is None and job_id is not None:
+        lifecycle_job_id = job_id
         logger.warning(
-            f"listing_generate_handler iniciado sem job_id para product_id={product_id}. tenant_id={tenant_id}"
+            f"Compatibilidade legada acionada: usando job_id como lifecycle_job_id no generate_job para product_id={product_id}."
+        )
+
+    if not lifecycle_job_id:
+        logger.warning(
+            f"listing_generate_handler iniciado sem lifecycle_job_id para product_id={product_id}. tenant_id={tenant_id}"
         )
 
     if supabase is None:
@@ -81,10 +88,13 @@ def listing_generate_handler(
         q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
         q.enqueue(
             "apps.worker.jobs.publish_job.listing_publish_handler",
-            listing_id=listing_id,
-            job_id=job_id,
-            tenant_id=tenant_id,
-            supabase=None
+            args=(),
+            kwargs={
+                "listing_id": listing_id,
+                "tenant_id": tenant_id,
+                "lifecycle_job_id": lifecycle_job_id,
+                "supabase": None,
+            },
         )
     else:
          logger.warning(f"Listing {listing_id} não enfileirado para publish (status={generated_listing.get('status')})")

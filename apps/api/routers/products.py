@@ -106,9 +106,11 @@ async def import_products(
     # Garantir que o ID do job sempre viaje em formato string para o worker.
     queue.enqueue(
         "apps.worker.jobs.import_job.product_import_handler",
-        gtins,
-        tenant_id=str(tenant_id),
-        job_id=job_id_str,
+        args=(gtins,),
+        kwargs={
+            "tenant_id": str(tenant_id),
+            "lifecycle_job_id": job_id_str,
+        },
     )
 
     return {

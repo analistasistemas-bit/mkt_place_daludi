@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, Literal, Optional, TypeVar
 
 from apps.api.deps import get_supabase_admin_client
 from packages.shared.logging import get_logger
+from rq import get_current_job
 
 logger = get_logger("worker.core")
 
@@ -166,31 +167,35 @@ def handle_job_lifecycle():
                 # Fallback defensivo: manter comportamento anterior em cenários não previstos
                 bound_args = kwargs
 
-            job_id = bound_args.get("job_id")
+            lifecycle_job_id = bound_args.get("lifecycle_job_id")
+            if lifecycle_job_id is None:
+                lifecycle_job_id = bound_args.get("job_id")
             tenant_id = bound_args.get("tenant_id")
             supabase = bound_args.get("supabase")
+            rq_job = get_current_job()
+            rq_job_id = rq_job.id if rq_job else None
 
             # Garante que os metadados sejam acessíveis para o handler também,
             # independentemente de ter sido passado por posição ou por kwargs.
-            if "job_id" not in kwargs and job_id is not None:
-                kwargs["job_id"] = job_id
+            if "lifecycle_job_id" not in kwargs and lifecycle_job_id is not None:
+                kwargs["lifecycle_job_id"] = lifecycle_job_id
             if "tenant_id" not in kwargs and tenant_id is not None:
                 kwargs["tenant_id"] = tenant_id
             if "supabase" not in kwargs and supabase is not None:
                 kwargs["supabase"] = supabase
 
             # Se não vier supabase pelo enqueue, cria com service role.
-            if not supabase and job_id and tenant_id:
+            if not supabase and lifecycle_job_id and tenant_id:
                 try:
                     supabase = get_supabase_admin_client()
                     kwargs["supabase"] = supabase
                 except Exception as e:
                     logger.error(
                         "Falha ao criar client admin do Supabase para lifecycle do job.",
-                        extra={"extra_data": {"job_id": job_id, "tenant_id": tenant_id, "error": str(e)}},
+                        extra={"extra_data": {"lifecycle_job_id": lifecycle_job_id, "tenant_id": tenant_id, "rq_job_id": rq_job_id, "error": str(e)}},
                     )
             
-            if not all([job_id, supabase, tenant_id]):
+            if not all([lifecycle_job_id, supabase, tenant_id]):
                 # Se não temos credenciais de banco no kwargs, apenas executa
                 # É útil para quando não for injetado diretamente mas precisávamos do wrapper
                 logger.warning(
@@ -198,45 +203,57 @@ def handle_job_lifecycle():
                     extra={
                         "extra_data": {
                             "handler": func.__name__,
-                            "job_id": job_id,
+                            "lifecycle_job_id": lifecycle_job_id,
                             "tenant_id": tenant_id,
+                            "rq_job_id": rq_job_id,
                         }
                     },
                 )
                 return func(*args, **kwargs)
                 
             try:
-                update_job_status(supabase, job_id, "processing")
+                metadata = {"handler": func.__name__}
+                if rq_job_id:
+                    metadata["rq_job_id"] = rq_job_id
+
+                update_job_status(supabase, lifecycle_job_id, "processing")
                 create_job_event(
                     supabase,
-                    job_id,
+                    lifecycle_job_id,
                     tenant_id,
                     "started",
                     "Iniciando processamento do job.",
+                    metadata=metadata,
                 )
                 
                 result = func(*args, **kwargs)
                 
-                update_job_status(supabase, job_id, "completed")
+                update_job_status(supabase, lifecycle_job_id, "completed")
                 create_job_event(
                     supabase,
-                    job_id,
+                    lifecycle_job_id,
                     tenant_id,
                     "completed",
                     "Job finalizado com sucesso.",
+                    metadata=metadata,
                 )
                 return result
                 
             except Exception as e:
                 # Trata DLQ
                 error_msg = str(e)
-                update_job_status(supabase, job_id, "failed", error_message=error_msg)
+                metadata = {"handler": func.__name__}
+                if rq_job_id:
+                    metadata["rq_job_id"] = rq_job_id
+
+                update_job_status(supabase, lifecycle_job_id, "failed", error_message=error_msg)
                 create_job_event(
                     supabase,
-                    job_id,
+                    lifecycle_job_id,
                     tenant_id,
                     "failed",
                     f"Falha fatal no job: {error_msg}",
+                    metadata=metadata,
                 )
                 raise e
                 
