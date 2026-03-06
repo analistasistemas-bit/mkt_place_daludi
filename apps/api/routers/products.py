@@ -21,22 +21,28 @@ logger = get_logger("router.products")
 # POST /products/import — Importar produtos
 # ============================================================
 
+from pydantic import BaseModel
+
+class ImportProductsRequest(BaseModel):
+    gtins: Optional[list[str]] = None
+
 @router.post("/import", status_code=status.HTTP_202_ACCEPTED)
 async def import_products(
     current_user: CurrentUser,
     tenant_id: TenantId,
     supabase: SupabaseAdmin,
-    gtins: Optional[list[str]] = None,
-    file: Optional[UploadFile] = File(None),
+    request: ImportProductsRequest,
 ):
     """
-    Importa produtos via lista de GTINs ou planilha CSV/XLSX.
+    Importa produtos via lista de GTINs (MVP em JSON).
     Cria um job assíncrono de importação.
     """
-    if not gtins and not file:
+    gtins = request.gtins
+    
+    if not gtins:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Forneça uma lista de GTINs ou um arquivo CSV/XLSX",
+            detail="Forneça uma lista de GTINs",
         )
 
     # Montar payload do job
@@ -48,13 +54,6 @@ async def import_products(
     if gtins:
         payload["gtins"] = gtins
         payload["source"] = "manual"
-    elif file:
-        # Ler conteúdo do arquivo
-        content = await file.read()
-        # Em produção: salvar no Supabase Storage e referenciar
-        payload["filename"] = file.filename
-        payload["file_size"] = len(content)
-        payload["source"] = "file"
 
     # Criar job de importação
     idempotency_key = f"import-{tenant_id}-{uuid.uuid4().hex[:8]}"

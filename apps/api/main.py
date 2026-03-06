@@ -65,9 +65,11 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "http://localhost:3000",  # Next.js dev
-            "http://localhost:8000",  # API dev
+            "http://localhost:3000",
+            "http://localhost:8000",
+            "https://mkt-place-daludi.vercel.app",
         ],
+        allow_origins_regex=r"https://.*\.vercel\.app",  # Permite preview URLs
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

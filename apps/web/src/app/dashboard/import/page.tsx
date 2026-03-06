@@ -29,7 +29,7 @@ export default function ImportPage() {
 
             const res = await fetchApi("/products/import", {
                 method: "POST",
-                body: JSON.stringify({ items: gtins }), // Ajustar payload mockado conforme o schema final da FastAPI
+                body: JSON.stringify({ gtins: gtins }), // Ajustado pro novo Schema Pydantic
             })
 
             toast.success(`${res.products_enqueued || gtins.length} GTINs enviados para processamento em background!`)

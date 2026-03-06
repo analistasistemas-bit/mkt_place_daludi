@@ -31,7 +31,7 @@ export default async function JobsPage() {
     try {
         // API Route to fetch jobs / job events
         const res = await fetchApi("/jobs")
-        jobs = res.data || []
+        jobs = res.items || []
     } catch (error) {
         console.error(error)
     }
