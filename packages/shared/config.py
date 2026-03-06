@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = Field(
         default="", description="Service role key do Supabase"
     )
+    supabase_jwt_secret: str = Field(
+        default="", description="JWT Secret do Supabase para validação de tokens"
+    )
 
     # ── Redis ─────────────────────────────────────────────────
     redis_url: str = Field(

@@ -9,6 +9,7 @@ from functools import lru_cache
 from typing import Annotated, Any, Optional
 
 from fastapi import Depends, HTTPException, Request, status
+from jose import jwt
 from supabase import Client, create_client
 
 from packages.shared.config import Settings, get_settings
@@ -52,22 +53,50 @@ async def get_current_user(request: Request) -> dict[str, Any]:
     token = auth_header.split(" ", 1)[1]
 
     try:
+        settings = get_settings()
+        
+        # Validar JWT localmente usando o SUPABASE_JWT_SECRET
+        if settings.supabase_jwt_secret:
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.supabase_jwt_secret,
+                    algorithms=["HS256"],
+                    options={"verify_aud": False} # Supabase usa aud: "authenticated"
+                )
+                user_id = payload.get("sub")
+                email = payload.get("email")
+                
+                if not user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Token inválido: campo 'sub' ausente",
+                    )
+            except Exception as e:
+                # Import logger if needed or use internal print for now if logger not in scope
+                # but logger is usually in routers. I should check if logger is in deps.py
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Token inválido ou expirado (local): {str(e)}",
+                )
+        else:
+            # Fallback para o modo antigo se o secret não estiver configurado
+            supabase = get_supabase_admin_client()
+            user_response = supabase.auth.get_user(token)
+            if not user_response or not user_response.user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token inválido ou expirado",
+                )
+            user_id = str(user_response.user.id)
+            email = user_response.user.email
+
+        # Buscar profile com tenant_id usando admin client
         supabase = get_supabase_admin_client()
-        user_response = supabase.auth.get_user(token)
-
-        if not user_response or not user_response.user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido ou expirado",
-            )
-
-        user = user_response.user
-
-        # Buscar profile com tenant_id
         profile_response = (
             supabase.table("profiles")
             .select("*")
-            .eq("id", str(user.id))
+            .eq("id", str(user_id))
             .maybe_single()
             .execute()
         )
@@ -79,8 +108,8 @@ async def get_current_user(request: Request) -> dict[str, Any]:
             role = profile_response.data.get("role", "member")
 
         return {
-            "id": str(user.id),
-            "email": user.email,
+            "id": str(user_id),
+            "email": email,
             "tenant_id": tenant_id,
             "role": role,
             "token": token,
