@@ -15,7 +15,7 @@ logger = get_logger("job.import_job")
 @handle_job_lifecycle()
 def product_import_handler(
     file_url_or_gtins: Any,
-    job_id: str,
+    job_id: str | None = None,
     tenant_id: str,
     supabase: Any = None
 ) -> Dict[str, Any]:
@@ -24,7 +24,10 @@ def product_import_handler(
     2. Registra na tabela de products
     3. Enfileira `product.resolve` para cada um
     """
-    logger.info(f"Processando importação. tenant_id={tenant_id}")
+    if job_id is None:
+        logger.warning("job_id não informado no enfileiramento; fluxo seguirá sem lifecycle de jobs no banco.")
+
+    logger.info(f"Processando importação. tenant_id={tenant_id}, job_id={job_id}")
 
     if supabase is None:
         supabase = get_supabase_admin_client()
