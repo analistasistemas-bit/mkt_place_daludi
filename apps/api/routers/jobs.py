@@ -4,7 +4,7 @@ Router de jobs — Consulta de status e eventos de jobs.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import uuid
 
@@ -15,6 +15,15 @@ from packages.shared.logging import get_logger
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 logger = get_logger("router.jobs")
+
+
+def _ensure_admin_role(current_user: dict[str, Any]) -> None:
+    role = current_user.get("role")
+    if role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem excluir jobs em lote.",
+        )
 
 
 # ============================================================
@@ -104,4 +113,46 @@ async def list_jobs(
         "page": page,
         "per_page": per_page,
         "pages": (total + per_page - 1) // per_page if total > 0 else 0,
+    }
+
+
+# ============================================================
+# DELETE /jobs/pending — Remover jobs pendentes do tenant (admin)
+# ============================================================
+
+
+@router.delete("/pending")
+async def delete_pending_jobs(
+    current_user: CurrentUser,
+    tenant_id: TenantId,
+    supabase: SupabaseAdmin,
+):
+    """Remove todos os jobs com status `pending` do tenant atual."""
+    _ensure_admin_role(current_user)
+
+    pending_jobs = (
+        supabase.table("jobs")
+        .select("id")
+        .eq("tenant_id", str(tenant_id))
+        .eq("status", "pending")
+        .execute()
+    )
+
+    job_ids = [job["id"] for job in (pending_jobs.data or [])]
+
+    if not job_ids:
+        return {"deleted_jobs": 0, "message": "Nenhum job pendente para excluir."}
+
+    # Limpar eventos primeiro para evitar órfãos e manter histórico consistente.
+    supabase.table("job_events").delete().in_("job_id", job_ids).execute()
+    supabase.table("jobs").delete().in_("id", job_ids).execute()
+
+    logger.info(
+        "Jobs pendentes removidos",
+        extra={"extra_data": {"tenant_id": str(tenant_id), "count": len(job_ids)}},
+    )
+
+    return {
+        "deleted_jobs": len(job_ids),
+        "message": "Jobs pendentes removidos com sucesso.",
     }
