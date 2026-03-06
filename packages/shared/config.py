@@ -13,10 +13,14 @@ class Settings(BaseSettings):
     """Configuração global do aplicativo carregada de variáveis de ambiente."""
 
     # ── Supabase ──────────────────────────────────────────────
-    supabase_url: str = Field(..., description="URL do projeto Supabase")
-    supabase_anon_key: str = Field(..., description="Anon key do Supabase")
+    supabase_url: str = Field(
+        default="", description="URL do projeto Supabase"
+    )
+    supabase_anon_key: str = Field(
+        default="", description="Anon key do Supabase"
+    )
     supabase_service_role_key: str = Field(
-        ..., description="Service role key do Supabase"
+        default="", description="Service role key do Supabase"
     )
 
     # ── Redis ─────────────────────────────────────────────────

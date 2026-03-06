@@ -13,13 +13,14 @@ import { Upload } from "lucide-react"
 export default function ImportPage() {
     const [loading, setLoading] = useState(false)
 
-    async function handleImport(formData: FormData) {
+    async function handleImport(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+        const formData = new FormData(e.currentTarget)
         const rawGtins = formData.get("gtins") as string
         if (!rawGtins) return
 
         setLoading(true)
         try {
-            // Split by lines or commas, clean up whitespace
             const gtins = rawGtins
                 .split(/[\n,]+/)
                 .map((g) => g.trim())
@@ -27,18 +28,20 @@ export default function ImportPage() {
 
             if (gtins.length === 0) throw new Error("Nenhum GTIN válido")
 
+            console.log("Iniciando importação de GTINs:", gtins)
             const res = await fetchApi("/products/import", {
                 method: "POST",
-                body: JSON.stringify({ gtins: gtins }), // Ajustado pro novo Schema Pydantic
+                body: JSON.stringify({ gtins: gtins }),
             })
 
-            toast.success(`${res.products_enqueued || gtins.length} GTINs enviados para processamento em background!`)
+            console.log("Importação concluída com sucesso:", res)
+            toast.success(`${gtins.length} GTINs enviados para processamento!`)
 
-            // Limpar form via reset
-            const form = document.getElementById("import-form") as HTMLFormElement
-            if (form) form.reset()
+            const form = e.currentTarget
+            form.reset()
 
         } catch (err: any) {
+            console.error("Erro no handleImport:", err)
             toast.error(`Erro ao importar: ${err.message}`)
         } finally {
             setLoading(false)
@@ -56,7 +59,7 @@ export default function ImportPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form id="import-form" action={handleImport} className="grid gap-4">
+                    <form id="import-form" onSubmit={handleImport} className="grid gap-4">
                         <Textarea
                             name="gtins"
                             placeholder="Ex: 7891234567890\n7890000000001"

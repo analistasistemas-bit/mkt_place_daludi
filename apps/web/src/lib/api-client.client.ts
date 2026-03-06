@@ -21,16 +21,23 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
         headers.set("Content-Type", "application/json")
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-    })
+    console.log(`FetchAPI (Client) calling: ${API_BASE_URL}${endpoint}`)
 
-    if (!response.ok) {
-        const errorBody = await response.text()
-        console.error(`FetchAPI (Client) error [${response.status}]: ${errorBody}`)
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+        })
+
+        if (!response.ok) {
+            const errorBody = await response.text()
+            console.error(`FetchAPI (Client) error [${response.status}]: ${errorBody}`)
+            throw new Error(`API Error: ${response.status} ${response.statusText}`)
+        }
+
+        return response.json()
+    } catch (err: any) {
+        console.error(`FetchAPI (Client) fatal error: ${err.message}`)
+        throw err
     }
-
-    return response.json()
 }
