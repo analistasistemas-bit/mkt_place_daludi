@@ -51,12 +51,12 @@ def keep_alive_loop(
     ping_fn=ping_keep_alive,
 ) -> None:
     while True:
-        sleep_fn(interval_seconds)
         try:
             ping_fn(url=url, timeout_seconds=timeout_seconds)
             logger.info(f"Keep-alive enviado para {url}")
         except Exception as exc:
             logger.warning(f"Falha no keep-alive do worker para {url}: {exc}")
+        sleep_fn(interval_seconds)
 
 
 def start_keep_alive_thread() -> None:

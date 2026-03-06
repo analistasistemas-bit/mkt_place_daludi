@@ -36,7 +36,7 @@ class StartKeepAliveThreadTests(unittest.TestCase):
 
 
 class KeepAliveLoopTests(unittest.TestCase):
-    def test_keep_alive_loop_sleeps_and_pings_url(self):
+    def test_keep_alive_loop_pings_url_before_first_sleep(self):
         slept = []
         pinged = []
 
@@ -46,6 +46,8 @@ class KeepAliveLoopTests(unittest.TestCase):
 
         def fake_ping(*, url, timeout_seconds):
             pinged.append((url, timeout_seconds))
+            if len(pinged) == 1:
+                return
 
         with self.assertRaises(StopIteration):
             worker.keep_alive_loop(
@@ -56,8 +58,13 @@ class KeepAliveLoopTests(unittest.TestCase):
                 ping_fn=fake_ping,
             )
 
+        self.assertEqual(
+            pinged,
+            [
+                ("https://mktplace-worker.onrender.com/", 9),
+            ],
+        )
         self.assertEqual(slept, [240])
-        self.assertEqual(pinged, [])
 
     def test_keep_alive_loop_ignores_ping_failures_and_keeps_running(self):
         slept = []
@@ -85,6 +92,7 @@ class KeepAliveLoopTests(unittest.TestCase):
         self.assertEqual(
             pinged,
             [
+                ("https://mktplace-worker.onrender.com/", 5),
                 ("https://mktplace-worker.onrender.com/", 5),
             ],
         )
