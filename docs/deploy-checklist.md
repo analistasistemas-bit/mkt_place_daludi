@@ -37,17 +37,16 @@ Crie um novo **Web Service** no Render com as seguintes configurações:
 
 ---
 
-## 2. Render - Background Worker (`mktplace-worker`)
+## 2. Render - Worker Web Service (`mktplace-worker`)
 
-Crie um novo **Background Worker** no Render. (Se precisar usar porta HTTP web, crie um *Web Service*, mas o worker em si só consome do Redis).
+Crie um novo **Web Service** (Plano Free) no Render com as seguintes configurações:
 
 - **Nome:** `mktplace-worker`
 - **Region:** A mesma da API
 - **Branch:** `main`
 - **Runtime:** `Python 3`
 - **Build Command:** `pip install -r requirements.txt`
-- **Start Command (Background Worker):** `python -m rq worker --url $REDIS_URL default high low`
-*Nota: Caso vá colocar como Web Service no plano Free para evitar sleep, pode usar: `python -m http.server $PORT & python -m rq worker --url $REDIS_URL default high low`*
+- **Start Command:** `python -m http.server $PORT & python -m rq worker --url $REDIS_URL default high low`
 
 ### Variáveis de Ambiente (Environment)
 
