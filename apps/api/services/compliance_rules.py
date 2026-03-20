@@ -176,6 +176,8 @@ class ComplianceRules:
         self, text: str, prefix_offset: int = 0
     ) -> List[ComplianceSpan]:
         """Verifica termos proibidos no texto."""
+        if not text:
+            return []
         spans = []
         text_lower = text.lower()
 

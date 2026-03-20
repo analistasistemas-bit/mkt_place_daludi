@@ -10,8 +10,9 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 
-export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
-    const errorMsg = searchParams?.error ? "Email ou senha inválidos." : null
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+    const params = await searchParams
+    const errorMsg = params?.error ? "Email ou senha inválidos." : null
 
     return (
         <div className="flex h-screen w-full items-center justify-center p-4">

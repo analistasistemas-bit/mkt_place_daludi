@@ -14,7 +14,7 @@ dev-api: ## Roda apenas a API localmente (sem Docker)
 	cd apps/api && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 dev-worker: ## Roda apenas o Worker localmente (sem Docker)
-	cd apps/worker && python -m rq worker --url $${REDIS_URL:-redis://localhost:6379/0} default high low
+	export RQ_WORKER_CLASS="SimpleWorker" && export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES && export PYTHONPATH=$$(pwd) && source .venv/bin/activate && python apps/worker/worker.py
 
 # ── Banco de Dados ───────────────────────────────────────────
 

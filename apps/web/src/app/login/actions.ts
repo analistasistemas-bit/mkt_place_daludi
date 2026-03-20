@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/server"
 
 export async function login(formData: FormData) {
     const email = formData.get("email") as string
+    console.log(`[AUTH] Tentativa de login para: ${email}`)
     const password = formData.get("password") as string
 
     const supabase = await createClient()
@@ -14,6 +15,7 @@ export async function login(formData: FormData) {
         email,
         password,
     })
+    console.log(`[AUTH] Resposta do Supabase para ${email}: ${error ? "Erro: " + error.message : "Sucesso"}`)
 
     if (error) {
         // Para MVP, poderíamos retornar { error: error.message } e lidar na action com useFormState ou apenas redirect pra /login?error...

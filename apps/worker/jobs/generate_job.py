@@ -89,8 +89,8 @@ def listing_generate_handler(
     if generated_listing.get("status") == "ready":
         from rq import Queue
         from redis import Redis
-        import os
-        q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
+        from packages.shared.config import get_settings
+        q = Queue(connection=Redis.from_url(get_settings().redis_url))
         q.enqueue(
             "apps.worker.jobs.publish_job.listing_publish_handler",
             args=(),

@@ -59,15 +59,15 @@ export default async function JobsPage() {
                         ) : (
                             jobs.map((j: any) => (
                                 <TableRow key={j.id}>
-                                    <TableCell className="font-mono text-sm max-w-xs truncate" title={j.job_id}>
-                                        {j.job_id}
+                                    <TableCell className="font-mono text-sm max-w-xs truncate" title={j.id}>
+                                        {j.id}
                                     </TableCell>
-                                    <TableCell>{j.message}</TableCell>
+                                    <TableCell>{j.error ? `Erro: ${j.error}` : j.job_type}</TableCell>
                                     <TableCell>
                                         {getStatusBadge(j.status)}
                                     </TableCell>
                                     <TableCell className="text-right text-muted-foreground">
-                                        {new Date(j.created_at).toLocaleString('pt-BR')}
+                                        {new Date(j.created_at).toLocaleString('pt-BR', { timeZone: 'America/Recife' })}
                                     </TableCell>
                                 </TableRow>
                             ))

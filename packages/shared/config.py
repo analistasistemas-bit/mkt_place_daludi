@@ -5,8 +5,13 @@ Todas as variáveis de ambiente do CLAUDE.md mapeadas aqui.
 
 from typing import Optional
 
+from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+# Localiza a raiz do projeto (onde está o .env)
+ROOT_DIR = Path(__file__).parent.parent.parent
+ENV_PATH = ROOT_DIR / ".env"
 
 
 class Settings(BaseSettings):
@@ -28,7 +33,9 @@ class Settings(BaseSettings):
 
     # ── Redis ─────────────────────────────────────────────────
     redis_url: str = Field(
-        default="redis://localhost:6379/0", description="URL de conexão do Redis"
+        default="redis://localhost:6379/0", 
+        description="URL de conexão do Redis",
+        alias="REDIS_URL"
     )
 
     # ── Mercado Livre ─────────────────────────────────────────
@@ -81,7 +88,7 @@ class Settings(BaseSettings):
     )
 
     model_config = {
-        "env_file": ".env",
+        "env_file": str(ENV_PATH),
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
         "extra": "ignore",

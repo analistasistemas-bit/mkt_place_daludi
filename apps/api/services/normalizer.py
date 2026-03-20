@@ -111,7 +111,9 @@ class Normalizer:
         """Normaliza atributos: padronizar unidades, limpar valores."""
         normalized = {}
         for key, value in attrs.items():
-            clean_key = self.normalize_whitespace(key.lower().strip())
+            if not key:
+                continue
+            clean_key = self.normalize_whitespace(str(key).lower().strip())
             if isinstance(value, str):
                 clean_value = self.clean_html(value)
                 clean_value = self.normalize_whitespace(clean_value)

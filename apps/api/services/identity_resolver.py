@@ -28,6 +28,7 @@ FIELD_WEIGHTS = {
 SOURCE_WEIGHTS = {
     "gs1": 1.0,         # Fonte oficial, máxima confiança
     "cnp": 0.9,         # Cadastro nacional
+    "brasilapi": 0.9,   # Fonte Nacional (CCG/SEFAZ)
     "verified": 0.85,   # Verificação manual
     "openfoodfacts": 0.7,# DB aberto
     "mercadolivre": 0.6, # Scraping ML
@@ -147,9 +148,9 @@ class IdentityResolver:
             status = "blocked"
 
         result = {
-            "confidence": round(total_confidence, 3),
+            "confidence": float(round(total_confidence, 3)),
             "status": status,
-            "breakdown": {k: round(v, 3) for k, v in breakdown.items()},
+            "breakdown": {k: float(round(v, 3)) for k, v in breakdown.items()},
             "suggestions": suggestions,
             "sources_count": len(sources),
             "evidence_count": len(evidence),

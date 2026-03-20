@@ -110,8 +110,8 @@ def product_import_handler(
         from redis import Redis
         import os
         
-        # Conexão estática para o job
-        q = Queue(connection=Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0")))
+        from packages.shared.config import get_settings
+        q = Queue(connection=Redis.from_url(get_settings().redis_url))
         q.enqueue(
             "apps.worker.jobs.resolve_job.product_resolve_handler",
             args=(),

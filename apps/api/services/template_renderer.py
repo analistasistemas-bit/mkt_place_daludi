@@ -165,7 +165,7 @@ class TemplateRenderer:
             {"title": "...", "description": "...", "template_used": "...", "template_version": 1}
         """
         # Determinar categoria normalizada
-        raw_category = category or product.get("category", "geral")
+        raw_category = category or product.get("category") or "geral"
         normalized_category = CATEGORY_ALIASES.get(
             raw_category.lower().replace(" ", "").replace("_", ""),
             raw_category.lower(),

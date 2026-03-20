@@ -20,7 +20,7 @@ class GTINLookupResult:
     """Resultado de consulta em cascata do produto por GTIN."""
     gtin: str
     found: bool
-    source: str  # "openfoodfacts" | "mercadolivre" | "fallback"
+    source: str  # "openfoodfacts" | "mercadolivre" | "brasilapi" | "fallback"
     confidence: float  # 0.0 - 1.0
     data: Dict[str, Any]
 
@@ -30,9 +30,10 @@ class ProductFetchService:
     Serviço de consulta de produto em cascata para resolução de GTIN.
     
     Ordem de fallback:
-    1. OpenFoodFacts (Ótimo para alimentos) - 70% confidence
-    2. Mercado Livre Search (Busca pública) - 50% confidence
-    3. Fallback (Dados vazios para revisão) - 14% confidence
+    1. Brasil API (Base Nacional / CCG) - 85% confidence (para GTINs 789/790)
+    2. OpenFoodFacts (Ótimo para alimentos) - 70% confidence
+    3. Mercado Livre Search (Busca pública) - 50% confidence
+    4. Fallback (Dados vazios para revisão) - 14% confidence
     """
 
     def __init__(self):
@@ -83,6 +84,14 @@ class ProductFetchService:
                 data={"error": "GTIN inválido"},
             )
 
+        # 0. Tentar Brasil API (se for brasileiro)
+        if cleaned.startswith(("789", "790")):
+            logger.info(f"GTIN brasileiro detectado ({cleaned[:3]}). Consultando Brasil API...")
+            br_result = await self._fetch_brasilapi(cleaned)
+            if br_result:
+                self._cache[cleaned] = br_result
+                return br_result
+
         # 1. Tentar OpenFoodFacts
         off_result = await self._fetch_openfoodfacts(cleaned)
         if off_result:
@@ -99,6 +108,41 @@ class ProductFetchService:
         fallback_result = self._fetch_fallback(cleaned)
         self._cache[cleaned] = fallback_result
         return fallback_result
+
+    async def _fetch_brasilapi(self, gtin: str) -> Optional[GTINLookupResult]:
+        """Consulta API do Brasil API (CCG/SEFAZ)."""
+        url = f"https://brasilapi.com.br/api/gtin/v1/{gtin}"
+        try:
+            response = await self._http_client.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                # Brasil API retorna: {gtin, name, description, brand, ncm, ...}
+                
+                title = data.get("name") or data.get("description") or ""
+                if not title:
+                    return None
+
+                return GTINLookupResult(
+                    gtin=gtin,
+                    found=True,
+                    source="brasilapi",
+                    confidence=0.85,
+                    data={
+                        "gtin": gtin,
+                        "title": title,
+                        "brand": data.get("brand") or "",
+                        "category": "", # Brasil API não retorna categoria amigável
+                        "description": data.get("description") or "",
+                        "attributes": {
+                            "ncm": data.get("ncm"),
+                            "origin": "Brasil (CCG/SEFAZ)"
+                        },
+                        "images": [],
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Erro ao consultar Brasil API para {gtin}: {e}")
+        return None
 
     async def _fetch_openfoodfacts(self, gtin: str) -> Optional[GTINLookupResult]:
         """Consulta API do OpenFoodFacts."""
@@ -166,10 +210,12 @@ class ProductFetchService:
                     brand = ""
                     attrs_dict = {}
                     for attr in attributes:
-                        if attr.get("id") == "BRAND":
-                            brand = attr.get("value_name", "")
-                        else:
-                            attrs_dict[attr.get("name")] = attr.get("value_name")
+                        attr_name = attr.get("name")
+                        if attr_name and attr.get("value_name"):
+                            if attr.get("id") == "BRAND":
+                                brand = attr.get("value_name", "")
+                            else:
+                                attrs_dict[attr_name] = attr.get("value_name")
 
                     return GTINLookupResult(
                         gtin=gtin,
@@ -199,10 +245,10 @@ class ProductFetchService:
             confidence=0.14,
             data={
                 "gtin": gtin,
-                "title": "Produto Sem Título Gerado",
+                "title": f"GTIN {gtin} - Aguardando Identificação",
                 "brand": "",
                 "category": "",
-                "description": "",
+                "description": "Produto não encontrado nas bases nacionais (CNP/CCG/ML). Verifique o GTIN ou insira os dados manualmente.",
                 "attributes": {},
                 "images": [],
             }
