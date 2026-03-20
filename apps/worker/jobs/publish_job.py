@@ -67,22 +67,29 @@ def listing_publish_handler(
         {"id": k, "value_name": v} for k, v in listing.get("attributes", {}).items()
     ]
     
+    # formatar o payload para a estrutura esperada pelo ml_service.publish_listing
+    listing_payload = {
+        "title": listing.get("title", ""),
+        "price": listing.get("price", 0.0),
+        "currency_id": listing.get("currency", "BRL"),
+        "available_quantity": 99,
+        "category_id": listing.get("category_id", "MLB1234"),
+        "attributes": attrs_ml,
+        "pictures": listing.get("images", []),
+    }
+    
     # Asynchronous publish_listing from stub
     publish_result = asyncio.run(ml_service.publish_listing(
-        title=listing.get("title", ""),
-        price=listing.get("price", 0.0),
-        currency_id=listing.get("currency", "BRL"),
-        available_quantity=99,
-        category_id=listing.get("category_id", "MLB1234"),
-        attributes=attrs_ml,
-        pictures=listing.get("images", []),
+        tenant_id=tenant_id,
+        listing_data=listing_payload,
         access_token=mock_token
     ))
     
-    if not publish_result or not publish_result.get("id"):
-        raise Exception("O ML Service não retornou o ID da publicação (Meli ID).")
+    if not publish_result or not publish_result.success or not publish_result.ml_item_id:
+        error_msg = publish_result.error if publish_result else "Erro desconhecido"
+        raise Exception(f"Falha na publicação no Mercado Livre: {error_msg}")
         
-    ml_id = publish_result.get("id")
+    ml_id = publish_result.ml_item_id
     
     # Salvar de volta
     supabase.table("listings").update({
