@@ -107,7 +107,7 @@ class EnrichmentService:
                         clean_title = clean_title[:idx].strip()
             
             # Remove caracteres estranhos que sobram no final
-            clean_title = re.sub(r'[\s\-\|\:\.]+$(?i)', '', clean_title).strip()
+            clean_title = re.sub(r'(?i)[\s\-\|\:\.]+$', '', clean_title).strip()
             
             if len(clean_title) > 10:
                 candidates.append(clean_title)

@@ -3,6 +3,7 @@ Job para resolução e normalização de Produto (`product.resolve`)
 """
 
 from __future__ import annotations
+import re
 
 from typing import Any, Dict
 
@@ -19,6 +20,7 @@ logger = get_logger("job.resolve_job")
 REPLACEABLE_TITLE_VALUES = {
     "",
     "Produto Sem Título Gerado",
+    "Aguardando Identificação",
 }
 
 
@@ -86,8 +88,10 @@ def product_resolve_handler(
         is_resolved = product_data.get("status") == "resolved"
         has_valid_title = (product_data.get("title") or "").strip() not in REPLACEABLE_TITLE_VALUES
         if has_valid_title:
-            current_title = (product_data.get("title") or "").strip().lower()
-            if current_title.startswith("gtin "):
+            current_title = (product_data.get("title") or "").strip()
+            # Clean up common trailing characters that might be part of placeholder titles
+            clean_title = re.sub(r'(?i)[\s\-\|\:\.]+$', '', current_title).strip().lower()
+            if clean_title.startswith("gtin ") or "aguardando identificação" in clean_title:
                 has_valid_title = False
         
         if is_resolved and has_valid_title:
