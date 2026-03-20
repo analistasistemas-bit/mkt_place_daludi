@@ -1,10 +1,28 @@
 export function getProductDisplayTitle(product) {
-  return (
-    product?.title ||
-    product?.attributes?.name ||
-    product?.id ||
-    "Produto Sem Título Gerado"
-  )
+  const title = product?.title
+
+  // Se tem título real (não é placeholder ou UUID ou null)
+  if (title && title.length > 0) {
+    // Verificar se o título é apenas um UUID
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (uuidPattern.test(title)) {
+      return product?.brand
+        ? `${product.brand} - ${product.gtin || "sem GTIN"}`
+        : `Produto ${product.gtin || product.id?.substring(0, 8)}`
+    }
+    return title
+  }
+
+  // Fallbacks inteligentes
+  if (product?.brand) {
+    return `${product.brand} - ${product.gtin || "sem GTIN"}`
+  }
+
+  if (product?.gtin) {
+    return `GTIN ${product.gtin} (aguardando identificação)`
+  }
+
+  return product?.id?.substring(0, 8) || "Produto Sem Título"
 }
 
 export function getProductReviewDraft(product) {
