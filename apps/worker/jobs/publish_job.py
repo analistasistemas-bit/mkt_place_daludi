@@ -94,7 +94,7 @@ def listing_publish_handler(
     # Salvar de volta
     supabase.table("listings").update({
         "status": "published",
-        "metadata": {"ml_id": ml_id, "ml_permalink": publish_result.get("permalink", "")}
+        "metadata": {"ml_id": ml_id, "ml_permalink": publish_result.permalink or ""}
     }).eq("id", listing_id).execute()
     
     logger.info(f"Publicação completa do listing {listing_id} (ML_ID={ml_id})")
