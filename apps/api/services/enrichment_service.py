@@ -1,10 +1,19 @@
 import httpx
 import re
 import asyncio
+import os
+import random
 from typing import Dict, Any, Optional
 from packages.shared.logging import get_logger
 
 logger = get_logger("service.enrichment")
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+]
 
 class EnrichmentService:
     """
@@ -19,25 +28,62 @@ class EnrichmentService:
 
     async def search_product_on_internet(self, gtin: str) -> Optional[Dict[str, Any]]:
         """
-        Realiza uma busca em múltiplos motores (DuckDuckGo, Bing, Google) e tenta extrair o título.
+        Realiza uma busca em múltiplos motores priorizando Google.
+        Este serviço deve ser utilizado preferencialmente por Workers para evitar delay na API.
         """
         logger.info(f"🔍 Pesquisando internet para GTIN: {gtin}")
+
+        # 1. Tentar Google (API se configurada ou Scraper v2 se for a única opção)
+        serper_key = os.getenv("SERPER_API_KEY")
+        if serper_key:
+            res_google_api = await self._search_google_api(gtin, serper_key)
+            if res_google_api:
+                return res_google_api
         
-        # 1. Tentar DuckDuckGo (HTML)
-        res_ddg = await self._search_ddg(gtin)
-        if res_ddg:
-            return res_ddg
-            
-        # 2. Tentar Bing
-        res_bing = await self._search_bing(gtin)
-        if res_bing:
-            return res_bing
-            
-        # 3. Tentar Google (Scraping básico)
+        # 2. Tentar Google Scraper v2 (Melhorado)
         res_google = await self._search_google(gtin)
         if res_google:
             return res_google
 
+        # 3. Tentar DuckDuckGo (Fallback)
+        res_ddg = await self._search_ddg(gtin)
+        if res_ddg:
+            return res_ddg
+            
+        # 4. Tentar Bing (Fallback final)
+        res_bing = await self._search_bing(gtin)
+        if res_bing:
+            return res_bing
+
+        return None
+
+    def _get_headers(self) -> Dict[str, str]:
+        """Retorna headers com User-Agent aleatório."""
+        return {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        }
+
+    async def _search_google_api(self, gtin: str, api_key: str) -> Optional[Dict[str, Any]]:
+        """Busca via API do Serper.dev (JSON limpo)."""
+        url = "https://google.serper.dev/search"
+        payload = {"q": gtin, "gl": "br", "hl": "pt-br"}
+        headers = {
+            'X-API-KEY': api_key,
+            'Content-Type': 'application/json'
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                if response.status_code == 200:
+                    data = response.json()
+                    organic = data.get("organic", [])
+                    if organic:
+                        # Extrair títulos orgânicos para processar
+                        titles = [item.get("title", "") for item in organic[:5]]
+                        return self._process_matches(titles, gtin, "google_api")
+        except Exception as e:
+            logger.error(f"Erro Serper API: {e}")
         return None
 
     async def _search_ddg(self, gtin: str) -> Optional[Dict[str, Any]]:
@@ -66,17 +112,26 @@ class EnrichmentService:
         return None
 
     async def _search_google(self, gtin: str) -> Optional[Dict[str, Any]]:
-        # Google é agressivo no bloqueio, mas tentamos o básico
         url = f"https://www.google.com/search?q={gtin}&hl=pt-BR"
         try:
             async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-                response = await client.get(url, headers=self.headers)
+                response = await client.get(url, headers=self._get_headers())
                 if response.status_code == 200:
-                    # Títulos no Google costumam estar em <h3>
-                    matches = re.findall(r'<h3[^>]*>(.*?)</h3>', response.text, re.IGNORECASE | re.DOTALL)
-                    return self._process_matches(matches, gtin, "google")
+                    # Títulos no Google em <h3> ou em divs específicas de resultado
+                    matches = re.findall(r'<h3[^>]*>(.*?)</h3>|aria-level="3"[^>]*>(.*?)</div>', response.text, re.IGNORECASE | re.DOTALL)
+                    # matches pode conter tuplas se houver múltiplos grupos no regex (or)
+                    flat_matches = []
+                    for m in matches:
+                        if isinstance(m, tuple):
+                            for g in m:
+                                if g: flat_matches.append(g)
+                        else:
+                            flat_matches.append(m)
+                    return self._process_matches(flat_matches, gtin, "google_scratch")
+                elif response.status_code == 403:
+                    logger.warning("🚫 Google detectou o scraper (403). Tentando fallbacks.")
         except Exception as e:
-            logger.error(f"Erro Google: {e}")
+            logger.error(f"Erro Google Scraper: {e}")
         return None
 
     def _process_matches(self, matches: list[str], gtin: str, source: str) -> Optional[Dict[str, Any]]:
