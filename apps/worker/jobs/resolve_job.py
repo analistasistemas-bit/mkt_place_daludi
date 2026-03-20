@@ -53,7 +53,8 @@ def product_resolve_handler(
     tenant_id: str,
     lifecycle_job_id: str | None = None,
     job_id: str | None = None,
-    supabase: Any = None
+    supabase: Any = None,
+    force: bool = False
 ) -> Dict[str, Any]:
     """
     Executa a etapa 1 do Pipeline GTIN:
@@ -80,18 +81,20 @@ def product_resolve_handler(
     
     product_data = res.data[0]
     
-    # Se houver status que indica processado, pode ser idempotente.
-    has_final_status = product_data.get("status") in ["resolved", "needs_review", "blocked"]
-    has_valid_title = (product_data.get("title") or "").strip() not in REPLACEABLE_TITLE_VALUES
-    # Verificar se título existente não é um placeholder genérico
-    if has_valid_title:
-        current_title = (product_data.get("title") or "").strip().lower()
-        if current_title.startswith("gtin "):
-            has_valid_title = False
-    
-    if has_final_status and has_valid_title:
-        logger.info(f"Produto {product_id} já resolvido com sucesso antes. Pulando.")
-        return {"status": "skipped", "reason": "already_resolved"}
+    # Idempotência: só pular se já está 'resolved' com título válido E NÃO é force
+    if not force:
+        is_resolved = product_data.get("status") == "resolved"
+        has_valid_title = (product_data.get("title") or "").strip() not in REPLACEABLE_TITLE_VALUES
+        if has_valid_title:
+            current_title = (product_data.get("title") or "").strip().lower()
+            if current_title.startswith("gtin "):
+                has_valid_title = False
+        
+        if is_resolved and has_valid_title:
+            logger.info(f"Produto {product_id} já resolvido com sucesso antes. Pulando.")
+            return {"status": "skipped", "reason": "already_resolved"}
+    else:
+        logger.info(f"Forçando re-resolução para produto {product_id}.")
     
     # 1. Obter normalizer e identity
     normalizer = get_normalizer()

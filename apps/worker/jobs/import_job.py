@@ -92,9 +92,16 @@ def product_import_handler(
         # Verifica se já existe produto pro tenant
         res = supabase.table("products").select("id").eq("tenant_id", tenant_id).eq("gtin", gtin).execute()
         
+        force_resolve = False
         if res.data:
-            logger.info(f"GTIN {gtin} já existe no tenant (idempotência). Pulando criação inicial.")
             p_id = res.data[0]["id"]
+            # Resetar o status para 'pending' para forçar re-resolução
+            supabase.table("products").update({
+                "status": "pending",
+                "confidence": 0,
+            }).eq("id", p_id).execute()
+            force_resolve = True
+            logger.info(f"GTIN {gtin} já existe no tenant. Resetado para re-resolução (force=True).")
         else:
             ins = supabase.table("products").insert({
                 "tenant_id": tenant_id,
@@ -102,13 +109,13 @@ def product_import_handler(
                 "status": "pending"
             }).execute()
             p_id = ins.data[0]["id"]
+            logger.info(f"GTIN {gtin} criado com id={p_id}.")
         
         produtos_criados.append(p_id)
         
         # Enfileirar a resolução (enqueue `product.resolve`)
         from rq import Queue
         from redis import Redis
-        import os
         
         from packages.shared.config import get_settings
         q = Queue(connection=Redis.from_url(get_settings().redis_url))
@@ -120,6 +127,7 @@ def product_import_handler(
                 "tenant_id": tenant_id,
                 "lifecycle_job_id": lifecycle_job_id,
                 "supabase": None,
+                "force": force_resolve,
             },
         )
         
