@@ -117,16 +117,9 @@ class EnrichmentService:
             async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
                 response = await client.get(url, headers=self._get_headers())
                 if response.status_code == 200:
-                    # Títulos no Google em <h3> ou em divs específicas de resultado
-                    matches = re.findall(r'<h3[^>]*>(.*?)</h3>|aria-level="3"[^>]*>(.*?)</div>', response.text, re.IGNORECASE | re.DOTALL)
-                    # matches pode conter tuplas se houver múltiplos grupos no regex (or)
-                    flat_matches = []
-                    for m in matches:
-                        if isinstance(m, tuple):
-                            for g in m:
-                                if g: flat_matches.append(g)
-                        else:
-                            flat_matches.append(m)
+                    # Captura qualquer conteúdo dentro de <h3> (mais resiliente)
+                    matches = re.findall(r'<h3[^>]*>(.*?)</h3>', response.text, re.IGNORECASE | re.DOTALL)
+                    flat_matches = [self._clean_html_tags(m) for m in matches if m]
                     return self._process_matches(flat_matches, gtin, "google_scratch")
                 elif response.status_code == 403:
                     logger.warning("🚫 Google detectou o scraper (403). Tentando fallbacks.")
